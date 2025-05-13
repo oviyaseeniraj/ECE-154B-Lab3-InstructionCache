@@ -21,6 +21,7 @@ module ucsbece154_icache #(
     input                     MemDataReady
 );
 
+// Indexing constants
 localparam WORD_OFFSET = $clog2(4);
 localparam BLOCK_OFFSET = $clog2(BLOCK_WORDS);
 localparam OFFSET = WORD_OFFSET + BLOCK_OFFSET;
@@ -31,36 +32,40 @@ reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg                   valid     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 
-reg [31:0] lastReadAddress; // NEW: remember the address we're loading into cache
+// Track original miss address
+reg [31:0] lastReadAddress;
 
-// Extract indices from ReadAddress
+// Extract fields
 wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-wire [NUM_TAG_BITS-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
-wire [BLOCK_OFFSET-1:0] word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
+wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
+wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
 
-// Use lastReadAddress for refill indexing
-wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET]; // NEW
-wire [NUM_TAG_BITS-1:0] refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];           // NEW
-wire [BLOCK_OFFSET-1:0] refill_word_offset = lastReadAddress[OFFSET-1:WORD_OFFSET];                 // NEW
+wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
+wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
+wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_OFFSET];
 
+// Internal logic
 integer i, j, k;
-reg hit;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
-always @ (posedge Clk) begin
+// NEW: latch hit detection
+reg hit_latched; // NEW
+
+always @(posedge Clk) begin
     if (Reset) begin
-        Ready <= 0;
         Instruction <= 0;
+        Ready <= 0;
         Busy <= 0;
         MemReadAddress <= 0;
         MemReadRequest <= 0;
         word_counter <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
+        hit_latched <= 0; // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -71,58 +76,62 @@ always @ (posedge Clk) begin
                 end
             end
         end
+
     end else begin
-        // Default values
         Ready <= 0;
-        hit <= 0;
-        
-        if (ReadEnable) begin
-            // Check for hit in all ways
+
+        // If not busy with miss and new fetch is requested
+        if (ReadEnable && !Busy && !need_to_write && !hit_latched) begin
+            // Check all ways for hit
+            hit_latched <= 0; // clear default
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit <= 1;
                     hit_way <= i;
+                    hit_latched <= 1; // NEW: latch hit
                 end
-            end
-
-            if (hit) begin
-                // Cache hit
-                Instruction <= words[set_index][hit_way][word_offset];
-                Ready <= 1;
-                Busy <= 0;
-            end else if (!need_to_write && !Busy) begin
-                // Cache miss, initiate memory read
-                lastReadAddress <= ReadAddress; // NEW
-                MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
-                MemReadRequest <= 1;
-                Busy <= 1;
-
-                // Find empty or replacement way
-                replace_way <= 0;
-                for (j = 0; j < NUM_WAYS; j = j + 1) begin
-                    if (!valid[set_index][j]) begin
-                        replace_way <= j;
-                    end
-                end
-                
-                word_counter <= 0;
-                need_to_write <= 1;
             end
         end
 
-        // Handle memory response
+        // NEW: if hit latched, output instruction and keep Ready high
+        if (hit_latched) begin
+            Instruction <= words[set_index][hit_way][word_offset];
+            Ready <= 1;
+            Busy <= 0;
+
+            // Clear latch after serving
+            hit_latched <= 0;
+        end
+
+        // If not hit and not already handling miss, initiate memory read
+        if (ReadEnable && !Busy && !need_to_write && !hit_latched) begin
+            lastReadAddress <= ReadAddress;
+            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}};
+            MemReadRequest <= 1;
+            Busy <= 1;
+
+            replace_way <= 0;
+            for (j = 0; j < NUM_WAYS; j = j + 1) begin
+                if (!valid[set_index][j]) begin
+                    replace_way <= j;
+                end
+            end
+
+            word_counter <= 0;
+            need_to_write <= 1;
+        end
+
+        // Refill handling
         if (MemDataReady && need_to_write) begin
             sdram_block[word_counter] <= MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
-                // Write block to cache
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-                    words[refill_set_index][replace_way][k] <= sdram_block[k]; // NEW: use lastReadAddress
+                    words[refill_set_index][replace_way][k] <= sdram_block[k];
                 end
-                tags[refill_set_index][replace_way] <= refill_tag_index; // NEW
+                tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-                Instruction <= sdram_block[refill_word_offset]; // NEW: use word offset from original address
+                Instruction <= sdram_block[refill_word_offset];
                 Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
