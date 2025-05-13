@@ -104,12 +104,11 @@ module ucsbece154_icache #(
                 if (ReadEnable) begin
                     // --- Cache Hit Detection ---
                     for (i = 0; i < NUM_WAYS; i = i + 1) begin
-                        if (valid[current_set_idx][i] && (tags[current_set_idx][i] == current_tag_val)) begin
+                        if (valid[current_set_idx][i] && (tags[current_set_idx][i] == current_tag_val) && !hit_this_cycle_flag) begin
                             data_from_cache_hit <= words[current_set_idx][i][current_word_offset_in_block];
-                            hit_this_cycle_flag <= 1;
+                            hit_this_cycle_flag = 1;
                             way_of_hit <= i; // Not used in random, but good for other policies
                             Busy <= 0; // A hit means we are not busy (or become not busy)
-                            hit_this_cycle_flag = 1; // Found hit
                         end
                     end
 
@@ -126,10 +125,9 @@ module ucsbece154_icache #(
                         // Or, implement finding an empty way first
                         found_empty_way = 0;
                         for (j = 0; j < NUM_WAYS; j = j + 1) begin
-                            if (!valid[current_set_idx][j]) begin // Check in the set of the current miss
+                            if (!valid[current_set_idx][j] && !found_empty_way) begin // Check in the set of the current miss
                                 way_to_refill <= j;
                                 found_empty_way = 1;
-                                break;
                             end
                         end
                         if (!found_empty_way) begin
