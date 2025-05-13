@@ -70,21 +70,21 @@ wire [31:0] reg_t6 = top.riscv.dp.rf.t6;
 //
 
 integer i;
-initial begin
-    $display( "Begin simulation." );
-    //\\ =========================== \\//
+reg prev_ready = 0;
 
+initial begin
+    $display("Begin simulation.");
+    
     reset = 1;
     @(negedge clk);
     @(negedge clk);
     reset = 0;
-    reg prev_ready = 0;
 
-
-    // Test for program 
-    for (i = 0; i < 10000; i=i+1) begin
+    // Run for 10000 cycles
+    for (i = 0; i < 10000; i = i + 1) begin
         @(negedge clk);
 
+        // Detect rising edge of Ready when ReadEnable is high
         if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
             total_fetches = total_fetches + 1;
             if (top.icache.MemReadRequest == 1)
@@ -92,40 +92,32 @@ initial begin
             else
                 icachehits = icachehits + 1;
         end
+
         prev_ready = top.icache.Ready;
-    // counter for jumps
 
-        // if(top.riscv.dp.BranchE_i) branchtotal++;
-        // if(top.riscv.dp.JumpE_i) jumptotal++;
-        // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
-        // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
-
-    // counter for branches
-
-    //         if(fetchpc==32'h00010068) begin
-    //		$display("#cycles = %d", i);  
-    //	 break;
-    //	 end
-        
-    // `ASSERT(fetchpc == 32'h00010064, ("reached last instruction"));    
-
-
-    // WRITE YOUR TEST HERE
-
-    // `ASSERT(rg_zero==32'b0, ("reg_zero incorrect"));
-    // `ASSERT(MEM_10000070==32'hBEEF000, ("mem.DATA[29] //incorrect"));
-
-
-    //\\ =========================== \\//
-        $display( "Total fetches: %d", total_fetches);
-        $display( "Total icache hits: %d", icachehits);
-        $display( "Total icache misses: %d", icachemisses);
-        $display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
-        $display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
-        $display( "End simulation.");
-        $stop;
+        // OPTIONAL: Uncomment if you want early stop on a certain PC
+        // if (fetchpc == 32'h00010068) begin
+        //     $display("#cycles = %d", i);
+        //     break;
+        // end
     end
+
+    // Done simulating, print results
+    $display("Total fetches: %d", total_fetches);
+    $display("Total icache hits: %d", icachehits);
+    $display("Total icache misses: %d", icachemisses);
+
+    if (total_fetches != 0) begin
+        $display("Instruction cache hit rate: %f", (icachehits * 100.0) / total_fetches);
+        $display("Instruction cache miss rate: %f", (icachemisses * 100.0) / total_fetches);
+    end else begin
+        $display("No fetches occurred.");
+    end
+
+    $display("End simulation.");
+    $stop;
 end
+
 
 endmodule
 
