@@ -51,54 +51,52 @@ reg found_empty;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg [31:0] target_word;
 reg write_done;
+reg need_to_write = 0;
 
 always @ (posedge Clk) begin
     // CHECK READ
     // read when busy = 0, readenable is raised, valid bit is 1, and tag matches
-    MemReadAddress <= 0;
-    MemReadRequest <= 0;
-    Ready <= 0;
-    Instruction <= 0;
-    hit = 0;
-    found_empty <= 0;
-    
-    for (i = 0; i < NUM_WAYS; i = i + 1) begin
-        $display("finding hit in way %d\n", i);
-        if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
-            hit = 1;
-            Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
-            Ready <= 1;
-            Busy <= 0;
-        end
-    end
-    if (hit == 0) begin
-        $display("miss, need to fetch from memory\n");
-        MemReadAddress <= ReadAddress;
-        MemReadRequest <= 1;
-        Busy <= 1;
-
-        // multiple words sent, so need to ensure that we receive all. use counters here to track
-        word_counter <= -1;
-        $display("wordcounter=-1\n");
-        for (j = 0; j < NUM_WAYS; j = j + 1) begin
-            $display("wordcounter still -1 checking for empty\n");
-            if (valid[set_index][j] == 0 && found_empty == 0) begin
-                $display("found empty word space\n");
-                word_iter_way = j;
-                word_counter <= 0;
-                found_empty <= 1;
+    if (!need_to_write) begin
+        MemReadAddress <= 0;
+        MemReadRequest <= 0;
+        Ready <= 0;
+        Instruction <= 0;
+        hit <= 0;
+        found_empty <= 0;
+        
+        for (i = 0; i < NUM_WAYS; i = i + 1) begin
+            $display("finding hit in way %d\n", i);
+            if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
+                hit <= 1;
+                Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
+                Ready <= 1;
+                Busy <= 0;
             end
         end
-        if (found_empty == 0) begin
-            $display("no empty word space, random replacement\n");
-            word_iter_way = $random % NUM_WAYS; // random replacement
-            word_counter <= 0;
+        if (hit == 0) begin
+            $display("miss, need to fetch from memory\n");
+            MemReadAddress <= ReadAddress;
+            MemReadRequest <= 1;
+            Busy <= 1;
+
+            // multiple words sent, so need to ensure that we receive all. use counters here to track
+            $display("wordcounter=-1\n");
+            for (j = 0; j < NUM_WAYS; j = j + 1) begin
+                if (valid[set_index][j] == 0 && found_empty == 0) begin
+                    word_iter_way <= j;
+                    word_counter <= 0;
+                    found_empty <= 1;
+                end
+            end
+            if (found_empty == 0) begin
+                word_iter_way <= $random % NUM_WAYS; // random replacement
+                word_counter <= 0;
+            end
+            $display("wordcounter=%d\n", word_counter);
+            need_to_write <= 1;
         end
-        $display("wordcounter=%d\n", word_counter);
     end
-    $display("gonna write!\n");
-    // receive data from SDRAM
-    if (Busy && MemDataReady) begin
+    if (MemDataReady && need_to_write) begin
         if (word_counter == MemReadAddress[3:2]) begin
             target_word <= MemDataIn;
         end
@@ -115,11 +113,10 @@ always @ (posedge Clk) begin
             MemReadRequest <= 0;
             write_done <= 1;
         end
-
         word_counter <= word_counter + 1; // Do this last
     end
-
 end
+
 
 always @ (posedge Clk) begin
     if (Reset) begin
