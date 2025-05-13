@@ -62,39 +62,39 @@ always @ (posedge Clk) begin
         Ready <= 0;
         Instruction <= 0;
         hit = 0;
-        found_empty <= 0;
+        found_empty = 0;
         
         for (i = 0; i < NUM_WAYS; i = i + 1) begin
             $display("finding hit in way %d\n", i);
             if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
                 hit = 1;
                 Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
-                Ready <= 1;
-                Busy <= 0;
+                Ready = 1;
+                Busy = 0;
             end
         end
         if (hit == 0) begin
             $display("miss, need to fetch from memory\n");
-            MemReadAddress <= ReadAddress;
-            MemReadRequest <= 1;
-            Busy <= 1;
+            MemReadAddress = ReadAddress;
+            MemReadRequest = 1;
+            Busy = 1;
 
             // multiple words sent, so need to ensure that we receive all. use counters here to track
             $display("wordcounter=-1\n");
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 if (valid[set_index][j] == 0 && found_empty == 0) begin
-                    word_iter_way <= j;
+                    word_iter_way = j;
                     $display("found empty way %d\n", j);
-                    word_counter <= 0;
-                    found_empty <= 1;
+                    word_counter = 0;
+                    found_empty = 1;
                 end
             end
             if (found_empty == 0) begin
-                word_iter_way <= $random % NUM_WAYS; // random replacement
-                word_counter <= 0;
+                word_iter_way = $random % NUM_WAYS; // random replacement
+                word_counter = 0;
             end
             $display("wordcounter=%d\n", word_counter);
-            need_to_write <= 1;
+            need_to_write = 1;
         end
     end
     if (MemDataReady && need_to_write) begin
