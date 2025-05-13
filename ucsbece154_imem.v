@@ -57,7 +57,7 @@ always @(posedge clk or posedge reset) begin
                 delay_counter <= delay_counter - 1;
             end else begin
                 if (word_counter < BLOCK_WORDS) begin
-                    DataIn <= text_enable ? text_data : 32'hDEADBEEF;
+                    DataIn <= text_enable ? text_data : {32{1'bz}};
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
                     delay_counter <= T0_DELAY; // restart delay for next word
