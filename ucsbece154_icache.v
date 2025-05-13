@@ -72,16 +72,21 @@ always @ (posedge Clk) begin
 
         // multiple words sent, so need to ensure that we receive all. use counters here to track
         word_counter <= -1;
+        $display("wordcounter=-1\n");
         for (j = 0; j < NUM_WAYS; j = j + 1) begin
+            $display("wordcounter still -1 checking for empty\n");
             if (valid[set_index][j] == 0 && word_counter == -1) begin
+                $display("found empty word space\n");
                 word_iter_way = j;
                 word_counter <= 0;
             end
         end
         if (word_counter == -1) begin
+            $display("no empty word space, random replacement\n");
             word_iter_way = $random % NUM_WAYS; // random replacement
             word_counter <= 0;
         end
+        $display("wordcounter=%d\n", word_counter);
     end
     // check for miss, fetch from memory and write missed block to cache
 end
