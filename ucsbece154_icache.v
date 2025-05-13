@@ -138,9 +138,9 @@ module ucsbece154_icache #(
                         end
                         word_counter_refill <= 0; // Reset for block refill
                     end
-                end else { // No ReadEnable
+                end else begin // No ReadEnable
                     Busy <= 0; // If not ReadEnable and not refilling, not busy
-                }
+                end
             end // end if (!refill_in_progress)
 
             // --- Cache Refill Logic (when MemDataReady) ---
