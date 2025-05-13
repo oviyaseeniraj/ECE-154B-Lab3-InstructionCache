@@ -94,8 +94,8 @@ always @ (posedge Clk) begin
             end
 
             // OLD: if (hit == 0) begin
-            if (hit == 0 && ReadEnable) begin // NEW: only latch lastReadAddress on real cache read
-                lastReadAddress <= ReadAddress; // NEW: correctly latch only when ReadEnable is high
+            if (hit == 0 && ReadEnable && !Busy) begin
+                lastReadAddress <= ReadAddress;
                 MemReadAddress <= ReadAddress;
                 MemReadRequest <= 1;
                 Busy <= 1;
