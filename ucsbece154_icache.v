@@ -109,7 +109,7 @@ module ucsbece154_icache #(
                             hit_this_cycle_flag <= 1;
                             way_of_hit <= i; // Not used in random, but good for other policies
                             Busy <= 0; // A hit means we are not busy (or become not busy)
-                            break; // Found hit
+                            hit_this_cycle_flag = 1; // Found hit
                         end
                     end
 
