@@ -90,19 +90,20 @@ module ucsbece154b_controller (
 
  always @ * begin
   case(ALUOpD)
-    ALUop_mem:                 ALUControlD = ALUcontrol_add;
-    ALUop_beqbne:              ALUControlD = ALUcontrol_sub;
-    ALUop_other: 
+    ALUop_mem:      ALUControlD = ALUcontrol_add;
+    ALUop_beqbne:   ALUControlD = ALUcontrol_sub;
+    ALUop_other: begin
       case(funct3_i)
         instr_addsub_funct3: 
           if (RtypeSubD) ALUControlD = ALUcontrol_sub;
-          else            ALUControlD = ALUcontrol_add;  
+          else           ALUControlD = ALUcontrol_add;
         instr_slt_funct3:     ALUControlD = ALUcontrol_slt;  
         instr_or_funct3:      ALUControlD = ALUcontrol_or;  
         instr_and_funct3:     ALUControlD = ALUcontrol_and;  
         default:              ALUControlD = 3'bxxx;
       endcase
-    default:
+    end
+    default:        ALUControlD = 3'bxxx;
   endcase
 end
 
