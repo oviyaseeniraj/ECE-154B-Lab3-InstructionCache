@@ -1,3 +1,7 @@
+`define GL_NUM_BTB_ENTRIES 32
+`define GL_NUM_GHR_BITS 3
+`define GL_NUM_PHT_ENTRIES 1024
+
 // ucsbece154b_datapath.v
 // ECE 154B, RISC-V pipelined processor 
 // Baseline instruction cache integration (patched)
