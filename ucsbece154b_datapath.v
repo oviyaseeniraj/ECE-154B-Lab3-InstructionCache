@@ -77,7 +77,7 @@ always @ (posedge clk) begin
     else if (!StallF_i) PCF_o <= PCnewF;
 end
 
-assign PCNewF_o = reset ? pc_start : PC; // NEW: expose speculative PC to top-level
+assign PCNewF_o = reset ? pc_start : PCnewF; // NEW: expose speculative PC to top-level
 
 
 // ***** DECODE STAGE ********************************
