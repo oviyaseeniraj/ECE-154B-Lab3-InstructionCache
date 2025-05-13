@@ -50,7 +50,6 @@ reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
 
 always @ (posedge Clk) begin
-    $display("hi babygirls\n");
     // CHECK READ
     // read when busy = 0, readenable is raised, valid bit is 1, and tag matches
     MemReadAddress <= 0;
@@ -60,13 +59,16 @@ always @ (posedge Clk) begin
     hit = 0;
     
     for (i = 0; i < NUM_WAYS; i = i + 1) begin
+        $display("finding hit in way %d\n", i);
         if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
             hit = 1;
             Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
             Ready <= 1;
+            Busy <= 0;
         end
     end
     if (hit == 0 && Busy == 0) begin
+        $display("miss, need to fetch from memory\n");
         MemReadAddress <= ReadAddress;
         MemReadRequest <= 1;
         Busy <= 1;
