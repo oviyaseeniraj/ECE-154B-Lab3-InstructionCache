@@ -45,8 +45,8 @@ module ucsbece154b_datapath (
     input          [1:0] ResultSrcM_i, 
     input                BranchE_i,
     input                JumpE_i,
-    input                BranchTypeE_i
-    output wire [31:0] PCNewF_o, // NEW: feeds icache ReadAddress
+    input                BranchTypeE_i,
+    output wire [31:0] PCNewF_o // NEW: feeds icache ReadAddress
 );
 
 `include "ucsbece154b_defines.vh"
