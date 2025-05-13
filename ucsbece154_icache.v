@@ -45,9 +45,11 @@ wire [$clog2(NUM_TAG_BITS)-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_S
 // read block
 integer i, j, k;
 reg hit;
-reg miss;
 reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
+reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
+reg [31:0] target_word;
+reg write_done;
 
 always @ (posedge Clk) begin
     // CHECK READ
@@ -91,14 +93,6 @@ always @ (posedge Clk) begin
         end
         $display("wordcounter=%d\n", word_counter);
     end
-    // check for miss, fetch from memory and write missed block to cache
-end
-
-reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
-reg [31:0] target_word;
-reg write_done;
-
-always @ (posedge Clk) begin
     $display("gonna write!\n");
     // receive data from SDRAM
     if (Busy && MemDataReady) begin
