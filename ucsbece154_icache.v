@@ -107,11 +107,11 @@ always @ (posedge Clk) begin
 
         if (MemDataReady && need_to_write) begin
             $display("writing back to cache\n");
+            sdram_block[word_counter] = MemDataIn; // NEW: moved this above
+
             if (word_counter == MemReadAddress[3:2]) begin
                 target_word <= MemDataIn;
             end
-
-            sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
