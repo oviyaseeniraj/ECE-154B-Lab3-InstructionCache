@@ -88,7 +88,7 @@ always @ (posedge Clk) begin
         // --- OUTPUT ON HIT ---
         if (ReadEnable && hit && !Busy && !need_to_write) begin // NEW
             Instruction <= words[set_index][hit_way][word_offset]; // NEW
-            Ready <= 1; // NEW
+            //Ready <= 1; // NEW
             Busy <= 0;  // NEW
         end
 
@@ -126,7 +126,7 @@ always @ (posedge Clk) begin
                 valid[refill_set_index][replace_way] <= 1;
 
                 Instruction <= sdram_block[refill_word_offset];
-                Ready <= 1;
+                //Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
@@ -136,5 +136,17 @@ always @ (posedge Clk) begin
         end
     end
 end
+
+// update ready
+always @ (posedge Clk) begin
+    if (Reset) begin
+        Ready <= 0;
+    end else if (MemDataReady && need_to_write) begin
+        Ready <= 1;
+    end else if (ReadEnable && hit && !Busy && !need_to_write) begin
+        Ready <= 1;
+    end else begin
+        Ready <= 0;
+    end
 
 endmodule
