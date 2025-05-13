@@ -20,14 +20,13 @@ module ucsbece154_imem #(
     output reg DataReady
 );
    
-reg [31:0] a_i;//address to memory map read address
+wire [31:0] a_i;//address to memory map read address
 
 wire [31:0] rd_o;// read data from memory
 
 // Implement SDRAM interface here
 always @ * begin
     DataIn = rd_o;
-    DataReady = 1;
 end
 
 // instantiate/initialize BRAM
@@ -52,25 +51,46 @@ wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH]-(TEXT_
 // get read-data 
 wire [31:0] text_data = TEXT[ text_address ];
 
+// internal state
+reg [31:0] base_addr;
+reg [$clog2(T0_DELAY+1):0] delay_counter;
+reg [$clog2(BLOCK_WORDS+1):0] word_counter;
+reg reading;
 
-reg [31:0] text_data_out = {ReadAddress[31:4], 4'b0};
-integer word_counter = 0;
-always @ (posedge clk or posedge reset) begin
-    if (word_counter < BLOCK_WORDS) begin
-        DataIn <= text_data_out;
-        text_data_out <= text_data_out + 4;
-        word_counter <= word_counter + 1;
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        DataIn <= 0;
         DataReady <= 0;
-    end else if (word_counter == BLOCK_WORDS) begin
-        DataReady <= 1;
+        reading <= 0;
+        delay_counter <= 0;
+        word_counter <= 0;
+    end else begin
+        DataReady <= 0; // default
+
+        if (ReadRequest && !reading) begin
+            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
+            delay_counter <= T0_DELAY;
+            word_counter <= 0;
+            reading <= 1;
+        end
+
+        if (reading) begin
+            if (delay_counter > 0) begin
+                delay_counter <= delay_counter - 1;
+            end else begin
+                // output one word
+                if (word_counter < BLOCK_WORDS) begin
+                    DataIn <= text_enable ? text_data : {32{1'bz}};
+                    DataReady <= 1;
+                    word_counter <= word_counter + 1;
+                end else if (word_counter == BLOCK_WORDS) begin
+                    DataReady <= 0;
+                    reading <= 0;
+                end
+            end
+        end
     end
-
 end
-
-// set rd_o iff a_i is in range 
-assign rd_o =
-    text_enable ? text_data : 
-    {32{1'bz}}; // not driven by this memory
 
 `ifdef SIM
 always @ * begin
