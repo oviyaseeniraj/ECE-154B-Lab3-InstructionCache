@@ -43,10 +43,10 @@ wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog
 wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_OFFSET];
 
 integer i, j, k;
-reg hit;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
-reg [$clog2(NUM_WAYS)-1:0] latched_hit_way; // NEW: latched version
-reg hit_latched; // NEW: latches hit event
+reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
+reg hit_latched;
+reg hit_this_cycle; // NEW: separate hit result for decision logic
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
@@ -65,6 +65,7 @@ always @ (posedge Clk) begin
         lastReadAddress <= 0;
         hit_latched <= 0;
         latched_hit_way <= 0;
+        hit_this_cycle <= 0; // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -78,19 +79,20 @@ always @ (posedge Clk) begin
     end else begin
         // Default values
         Ready <= 0;
-        hit   <= 0;
+        hit_this_cycle <= 0; // NEW
 
+        // --- HIT DETECTION LOGIC ---
         if (ReadEnable && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit <= 1;
+                    hit_this_cycle <= 1; // NEW
                     hit_way <= i;
                 end
             end
         end
 
-        // Latch hit and output instruction next cycle
-        if (hit) begin
+        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
+        if (hit_this_cycle) begin
             hit_latched <= 1;
             latched_hit_way <= hit_way;
         end else begin
@@ -104,7 +106,9 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
 
-        if (!hit && ReadEnable && !Busy && !need_to_write) begin
+        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
+        // if (!hit && ReadEnable && !Busy && !need_to_write) begin
+        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin // NEW
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
