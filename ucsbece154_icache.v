@@ -93,12 +93,12 @@ reg write_done;
 always @ (posedge Clk) begin
     // receive data from SDRAM
     if (MemDataReady) begin
-        sdram_block[word_counter] <= MemDataIn;
-        word_counter <= word_counter + 1;
         if (word_counter == MemReadAddress[3:2]) begin
             target_word <= MemDataIn;
         end
-        // supply to processor after all words cache controller updates the randomly selected way (block, tag, valid)
+
+        sdram_block[word_counter] <= MemDataIn;
+
         if (word_counter == BLOCK_WORDS - 1) begin
             for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                 words[set_index][word_iter_way][k] <= sdram_block[k];
@@ -109,7 +109,10 @@ always @ (posedge Clk) begin
             MemReadRequest <= 0;
             write_done <= 1;
         end
+
+        word_counter <= word_counter + 1; // Do this last
     end
+
 end
 
 always @ (posedge Clk) begin
