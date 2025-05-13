@@ -9,11 +9,6 @@ reg clk = 1;
 always #1 clk <= ~clk;
 reg reset;
 
-integer jumptotal = 0;
-integer jumppredictedcorrectly = 0;
-integer branchtotal = 0;
-integer branchpredictedcorrectly = 0;
-
 // HIT/MISS TRACKING
 integer total_fetches = 0;
 integer icachehits = 0;
@@ -72,15 +67,25 @@ initial begin
     for (i = 0; i < 10000; i = i + 1) begin
         @(negedge clk);
 
-        // Detect edge of Ready going high for a new fetch
-        if (top.icache.ReadEnable && top.icache.Ready && !prev_ready) begin
-            total_fetches = total_fetches + 1;
-            if (prev_memread == 1)
-                icachemisses = icachemisses + 1;
-            else
-                icachehits = icachehits + 1;
+        // PUT CODE TO COUNT INSTR FETCHES, CACHE HITS, AND CACHE MISSES HERE (can get variables in icache via top.icache.varname)
+        // Detect a miss-trigger condition
+        if (top.icache.MemReadRequest && !prev_memread) begin
+            was_miss = 1;
         end
 
+        // Count a completed instruction fetch (Ready pulse)
+        if (top.icache.Ready && !prev_ready) begin
+            total_fetches = total_fetches + 1;
+
+            if (was_miss) begin
+                icachemisses = icachemisses + 1;
+                was_miss = 0;
+            end else begin
+                icachehits = icachehits + 1;
+            end
+        end
+
+        // Update previous state trackers
         prev_ready = top.icache.Ready;
         prev_memread = top.icache.MemReadRequest;
     end

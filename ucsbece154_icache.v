@@ -46,16 +46,18 @@ integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
 reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
 reg hit_latched;
-reg hit_this_cycle; // NEW: separate hit result for decision logic
+reg hit_this_cycle;
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
+reg firedOnce; // NEW
+
 always @ (posedge Clk) begin
     if (Reset) begin
-        Ready <= 0;
+        Ready <= 1; // NEW: allow first fetch to start by simulating "ready"
         Instruction <= 0;
         Busy <= 0;
         MemReadAddress <= 0;
@@ -65,7 +67,8 @@ always @ (posedge Clk) begin
         lastReadAddress <= 0;
         hit_latched <= 0;
         latched_hit_way <= 0;
-        hit_this_cycle <= 0; // NEW
+        hit_this_cycle <= 0;
+        firedOnce <= 0; // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -78,20 +81,23 @@ always @ (posedge Clk) begin
         end
     end else begin
         // Default values
-        Ready <= 0;
-        hit_this_cycle <= 0; // NEW
+        if (!firedOnce)
+            firedOnce <= 1; // NEW
 
-        // --- HIT DETECTION LOGIC ---
+        if (firedOnce)
+            Ready <= 0; // NEW: disable simulated ready after reset
+
+        hit_this_cycle <= 0;
+
         if (ReadEnable && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit_this_cycle <= 1; // NEW
+                    hit_this_cycle <= 1;
                     hit_way <= i;
                 end
             end
         end
 
-        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
             hit_latched <= 1;
             latched_hit_way <= hit_way;
@@ -106,9 +112,7 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
 
-        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
-        // if (!hit && ReadEnable && !Busy && !need_to_write) begin
-        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin // NEW
+        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
