@@ -20,11 +20,15 @@ module ucsbece154_imem #(
     output reg DataReady
 );
    
-wire [31:0] a_i = ReadAddress;//address to memory map read address
+reg [31:0] a_i;//address to memory map read address
 
 wire [31:0] rd_o;// read data from memory
 
 // Implement SDRAM interface here
+always @ * begin
+    DataIn = rd_o;
+    DataReady = 1;
+end
 
 // instantiate/initialize BRAM
 reg [31:0] TEXT [0:TEXT_SIZE-1];
@@ -47,6 +51,21 @@ wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH]-(TEXT_
 
 // get read-data 
 wire [31:0] text_data = TEXT[ text_address ];
+
+
+reg [31:0] text_data_out = {ReadAddress[31:4], 4'b0};
+integer word_counter = 0;
+always @ (posedge clk or posedge reset) begin
+    if (word_counter < BLOCK_WORDS) begin
+        DataIn <= text_data_out;
+        text_data_out <= text_data_out + 4;
+        word_counter <= word_counter + 1;
+        DataReady <= 0;
+    end else if (word_counter == BLOCK_WORDS) begin
+        DataReady <= 1;
+    end
+
+end
 
 // set rd_o iff a_i is in range 
 assign rd_o =
