@@ -61,13 +61,13 @@ always @ (posedge Clk) begin
         MemReadRequest <= 0;
         Ready <= 0;
         Instruction <= 0;
-        hit = 0;
+        hit <= 0;
         found_empty <= 0;
         
         for (i = 0; i < NUM_WAYS; i = i + 1) begin
             $display("finding hit in way %d\n", i);
             if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
-                hit = 1;
+                hit <= 1;
                 Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
                 Ready <= 1;
                 Busy <= 0;
@@ -85,16 +85,16 @@ always @ (posedge Clk) begin
                 if (valid[set_index][j] == 0 && found_empty == 0) begin
                     word_iter_way <= j;
                     $display("found empty way %d\n", j);
-                    word_counter = 0;
-                    found_empty = 1;
+                    word_counter <= 0;
+                    found_empty <= 1;
                 end
             end
             if (found_empty == 0) begin
                 word_iter_way <= $random % NUM_WAYS; // random replacement
-                word_counter = 0;
+                word_counter <= 0;
             end
             $display("wordcounter=%d\n", word_counter);
-            need_to_write = 1;
+            need_to_write <= 1;
         end
     end
     if (MemDataReady && need_to_write) begin
