@@ -129,7 +129,7 @@ always @ (posedge Clk) begin
             end
 
             word_counter <= 0;
-            need_to_write <= 1;
+            need_to_write = 1;
         end
 
         if (MemDataReady && need_to_write) begin
