@@ -56,6 +56,7 @@ wire [31:0] fetchpc = top.riscv.dp.PCPlus4W;
 integer i;
 reg prev_ready = 0;
 reg prev_memread = 0;
+reg was_miss = 0;
 
 initial begin
     $display("Begin simulation.");
