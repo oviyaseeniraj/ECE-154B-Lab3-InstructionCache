@@ -45,6 +45,7 @@ wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_O
 integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
 reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
+reg [$clog2(NUM_SETS)-1:0] latched_set_index;
 reg hit_latched;
 reg hit_this_cycle;
 
@@ -102,13 +103,14 @@ always @ (posedge Clk) begin
             hit_latched <= 1;
             latched_hit_way <= hit_way;
             latchedReadAddress <= ReadAddress; // NEW
+            latched_set_index <= set_index;
         end else begin
             hit_latched <= 0;
         end
 
         if (hit_latched) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+            Instruction <= words[latched_set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
             Ready <= 1;
             Busy <= 0;
         end
