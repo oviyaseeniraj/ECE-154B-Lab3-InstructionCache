@@ -85,7 +85,7 @@ reset = 0;
 // Test for program 
 for (i = 0; i < 10000; i=i+1) begin
     @(negedge clk);
-    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && Ready != last_ready) begin
+    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && top.icache.Ready != last_ready) begin
         if (top.icache.MemReadRequest == 1) begin
             icachemisses = icachemisses + 1;
             total_fetches = total_fetches + 1;
