@@ -63,7 +63,7 @@ always @(posedge clk or posedge reset) begin
                     DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
-                    delay_counter <= T0_DELAY;
+                    // delay_counter <= T0_DELAY;
                 end else begin
                     reading <= 0;
                 end
