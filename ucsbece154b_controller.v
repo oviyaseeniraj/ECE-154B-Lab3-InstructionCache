@@ -217,7 +217,9 @@ always @(posedge clk) begin
   if (reset)
     firedOnce <= 0;
   else
+  else begin
     firedOnce <= 1;
+  end
 end
 
 assign StallF_o = lwStall || (firedOnce && ~Ready_F);
