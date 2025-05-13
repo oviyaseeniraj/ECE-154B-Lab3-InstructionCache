@@ -46,14 +46,12 @@ integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
 reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
 reg hit_latched;
-reg hit_this_cycle;
+reg hit_this_cycle; // NEW: separate hit result for decision logic
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
-
-reg RequestSeen; // NEW: tracks if real request has happened
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -67,8 +65,7 @@ always @ (posedge Clk) begin
         lastReadAddress <= 0;
         hit_latched <= 0;
         latched_hit_way <= 0;
-        hit_this_cycle <= 0;
-        RequestSeen <= 0; // NEW
+        hit_this_cycle <= 0; // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -82,24 +79,19 @@ always @ (posedge Clk) begin
     end else begin
         // Default values
         Ready <= 0;
-        hit_this_cycle <= 0;
+        hit_this_cycle <= 0; // NEW
 
-        // Register a real request was made
+        // --- HIT DETECTION LOGIC ---
         if (ReadEnable && !Busy && !need_to_write) begin
-            RequestSeen <= 1; // NEW
-        end
-
-        // Only process ReadEnable when past reset and real request has happened
-        // if (ReadEnable && !Busy && !need_to_write) begin
-        if (ReadEnable && !Busy && !need_to_write && RequestSeen) begin // NEW
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit_this_cycle <= 1;
+                    hit_this_cycle <= 1; // NEW
                     hit_way <= i;
                 end
             end
         end
 
+        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
             hit_latched <= 1;
             latched_hit_way <= hit_way;
@@ -114,8 +106,9 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
 
+        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         // if (!hit && ReadEnable && !Busy && !need_to_write) begin
-        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write && RequestSeen) begin // NEW
+        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin // NEW
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
