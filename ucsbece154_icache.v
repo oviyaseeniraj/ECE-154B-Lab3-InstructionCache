@@ -89,8 +89,8 @@ always @ (posedge Clk) begin
         if (ReadEnable && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit_this_cycle <= 1;
-                    hit_way <= i;
+                    hit_this_cycle = 1;
+                    hit_way = i;
                 end
             end
         end
