@@ -29,7 +29,7 @@ PARAMETERS    ?=
 PLUSARGS      ?=
 VSIM_OPTIONS  ?= -voptargs=+acc=lprn
 EXTRA_OPTIONS ?= $(VSIM_OPTIONS) $(addprefix -g,$(PARAMETERS)) $(addprefix +,$(PLUSARGS))
-RTL           := text.dat ucsbece154b_alu.v ucsbece154b_branch.v ucsbece154b_controller.v ucsbece154b_datapath.v ucsbece154_dmem.v ucsbece154_imem.v ucsbece154b_riscv_pipe.v ucsbece154b_rf.v ucsbece154b_top.v ucsbece154b_top_tb.v ucsbece154b_defines.vh
+RTL           := text.dat ucsbece154b_alu.v ucsbece154b_branch.v ucsbece154b_controller.v ucsbece154b_datapath.v ucsbece154_dmem.v ucsbece154_imem.v ucsbece154b_riscv_pipe.v ucsbece154b_rf.v ucsbece154b_top.v ucsbece154b_top_tb.v ucsbece154b_defines.vh ucsbece154b_icache.v
 
 all: clean run $(VPI_MODULES) $(RTL)
 
