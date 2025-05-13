@@ -61,7 +61,7 @@ always @ (posedge Clk) begin
         MemReadRequest <= 0;
         Ready <= 0;
         Instruction <= 0;
-        hit <= 0;
+        hit = 0;
         found_empty <= 0;
         
         for (i = 0; i < NUM_WAYS; i = i + 1) begin
