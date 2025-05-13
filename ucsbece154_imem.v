@@ -66,9 +66,9 @@ module ucsbece154_imem #(
                         if (!first_word_of_burst_sent) begin
                             first_word_of_burst_sent <= 1;
                             delay_counter <= T_BURST_INTER_WORD_DELAY; // Delay for subsequent words
-                        end else {
+                        end else begin
                             delay_counter <= T_BURST_INTER_WORD_DELAY;
-                        }
+                        end
                     end else begin // word_counter == BLOCK_WORDS, entire block sent
                         reading <= 0;
                         // first_word_of_burst_sent will be reset when a new ReadRequest starts
