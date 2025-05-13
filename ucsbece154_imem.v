@@ -1,3 +1,5 @@
+`define MIN(A,B) (((A)<(B))?(A):(B))
+
 module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
     parameter BLOCK_WORDS = 4,
