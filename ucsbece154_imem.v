@@ -48,7 +48,7 @@ always @(posedge clk or posedge reset) begin
 
         // Start a new burst
         if (ReadRequest && !reading) begin
-            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
+            base_addr <= {ReadAddress[31:4], 4'b0100}; // align to block
             delay_counter <= T0_DELAY;
             word_counter <= 0;
             reading <= 1;
