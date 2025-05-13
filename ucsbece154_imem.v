@@ -10,7 +10,7 @@ module ucsbece154_imem #(
     output reg [31:0] DataIn,
     output reg DataReady
 );
-
+    localparam WORD_SIZE = 32;
     localparam T_BURST_INTER_WORD_DELAY = 0; // For T_burst=1, delay between subsequent words is 0 additional cycles
 
     reg [31:0] TEXT [0:TEXT_SIZE-1];
