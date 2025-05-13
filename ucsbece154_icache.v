@@ -1,4 +1,4 @@
-module ucsbece154b_icache #(
+module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
