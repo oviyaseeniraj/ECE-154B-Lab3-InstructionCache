@@ -65,7 +65,7 @@ always @ (posedge Clk) begin
             Ready <= 1;
         end
     end
-    if (hit == 0) begin
+    if (hit == 0 and Busy == 0) begin
         MemReadAddress <= ReadAddress;
         MemReadRequest <= 1;
         Busy <= 1;
