@@ -148,5 +148,6 @@ always @ (posedge Clk) begin
     end else begin
         Ready <= 0;
     end
+end
 
 endmodule
