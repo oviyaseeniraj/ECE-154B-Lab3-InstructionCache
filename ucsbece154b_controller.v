@@ -211,8 +211,8 @@ module ucsbece154b_controller (
  wire lwStall; 
 
  assign lwStall = (ResultSrcE == 1) & ( (Rs1D_i == RdE_i) | (Rs2D_i == RdE_i) ) & (RdE_i != 0);
- assign StallF_o = lwStall;
- assign StallD_o = lwStall;
+ assign StallF_o = lwStall || ~Ready_F;
+ assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
  assign FlushE_o = lwStall | MisspredictE_i; 
   
