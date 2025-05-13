@@ -212,7 +212,7 @@ always @(posedge clk) begin
     firedOnce <= 1;
 end
 
- assign StallF_o = lwStall || (~Ready_F);
+ assign StallF_o = lwStall || (~Ready_F && firedOnce) || MisspredictE_i; //added Ready instruction to stall fetch stage in case of cache miss
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
