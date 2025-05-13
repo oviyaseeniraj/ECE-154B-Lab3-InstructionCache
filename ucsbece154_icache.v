@@ -43,11 +43,12 @@ wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:
 wire [$clog2(NUM_TAG_BITS)-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 
 // read block
-integer i, j;
+integer i, j, k;
 reg hit;
 reg miss;
 reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
+
 always @ (posedge Clk) begin
     // CHECK READ
     // read when busy = 0, readenable is raised, valid bit is 1, and tag matches
@@ -86,19 +87,35 @@ always @ (posedge Clk) begin
 end
 
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
-always @ (posedge Clk) begin
-    // check if this is the word we are looking for. if yes, save it and then read it last
-    if (MemReadAddress[3:2] == word_counter) begin
-        
-    end
+reg [31:0] target_word;
+reg write_done;
 
+always @ (posedge Clk) begin
+    // receive data from SDRAM
     sdram_block[word_counter] <= MemDataIn;
     word_counter <= word_counter + 1;
-
-    if (word_counter == BLOCK_WORDS - 1) begin
-        Busy <= 0; 
-
+    if (word_counter == MemReadAddress[3:2]) begin
+        target_word <= MemDataIn;
     end
+    // supply to processor after all words cache controller updates the randomly selected way (block, tag, valid)
+    if (word_counter == BLOCK_WORDS - 1) begin
+        for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+            words[set_index][word_iter_way][k] <= sdram_block[k];
+        end
+        tags[set_index][word_iter_way] <= tag_index;
+        valid[set_index][word_iter_way] <= 1;
+        Busy <= 0;
+        MemReadRequest <= 0;
+        write_done <= 1;
+    end
+end
+
+always @ (posedge Clk) begin
+    if (write_done) begin
+        Instruction <= target_word;
+    end
+    write_done <= 0;
+    Ready <= 0;
 end
 
 endmodule
