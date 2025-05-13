@@ -23,7 +23,7 @@ always @ * begin
         ALUcontrol_slt: result_o = {31'b0, ($signed(a_i)<$signed(b_i))};
         default: begin
             `ifdef SIM
-                 #$warning("Unsupported ALUOp given: %h", alucontrol_i);
+                 //$warning("Unsupported ALUOp given: %h", alucontrol_i);
             `endif
             result_o = {32{1'bx}};
         end
