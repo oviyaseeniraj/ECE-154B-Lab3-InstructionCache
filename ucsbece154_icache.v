@@ -71,6 +71,7 @@ module ucsbece154_icache #(
     reg refill_block_written_flag; // Set for one cycle after block write to cache is done
 
     integer i, j, k; // Loop iterators
+    integer found_empty_way; // Flag to indicate if an empty way was found in the set
 
     // Main FSM and Cache Operation Logic
     always @(posedge Clk) begin
@@ -120,11 +121,9 @@ module ucsbece154_icache #(
                         // Align MemReadAddress to the start of the block for the memory request
                         MemReadAddress <= {ReadAddress[WORD_SIZE-1:OFFSET_BITS], {OFFSET_BITS{1'b0}} };
 
-
                         // Select way for replacement (random or find empty)
                         // For simplicity using $random, ensure your synthesis tool supports it or use an LFSR
                         // Or, implement finding an empty way first
-                        logic found_empty_way;
                         found_empty_way = 0;
                         for (j = 0; j < NUM_WAYS; j = j + 1) begin
                             if (!valid[current_set_idx][j]) begin // Check in the set of the current miss
