@@ -78,14 +78,12 @@ reset = 1;
 @(negedge clk);
 @(negedge clk);
 reset = 0;
-
-
+reg prev_ready = 0;
 
 
 // Test for program 
 for (i = 0; i < 10000; i=i+1) begin
     @(negedge clk);
-    reg prev_ready = 0;
 
     if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
             total_fetches = total_fetches + 1;
