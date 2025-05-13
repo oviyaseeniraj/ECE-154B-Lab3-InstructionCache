@@ -93,28 +93,19 @@ module ucsbece154b_controller (
     ALUop_mem:                 ALUControlD = ALUcontrol_add;
     ALUop_beqbne:              ALUControlD = ALUcontrol_sub;
     ALUop_other: 
-       case(funct3_i)
-           instr_addsub_funct3: 
-                 if(RtypeSubD) ALUControlD = ALUcontrol_sub;
-                 else          ALUControlD = ALUcontrol_add;  
-           instr_slt_funct3:   ALUControlD = ALUcontrol_slt;  
-           instr_or_funct3:    ALUControlD = ALUcontrol_or;  
-           instr_and_funct3:   ALUControlD = ALUcontrol_and;  
-           default:            ALUControlD = 3'bxxx;
-        //     `ifdef SIM
-        //         $warning("Unsupported funct3 given: %h", funct3_i);
-        //     `else
-        //         ;
-        //     `endif  
-       endcase
-    default: 
-      //`ifdef SIM
-         //$warning("Unsupported ALUop given: %h", ALUOpD);
-      //`else
-      //    ;
-      //`endif   
-   endcase
- end
+      case(funct3_i)
+        instr_addsub_funct3: 
+          if (RtypeSubD) ALUControlD = ALUcontrol_sub;
+          else            ALUControlD = ALUcontrol_add;  
+        instr_slt_funct3:     ALUControlD = ALUcontrol_slt;  
+        instr_or_funct3:      ALUControlD = ALUcontrol_or;  
+        instr_and_funct3:     ALUControlD = ALUcontrol_and;  
+        default:              ALUControlD = 3'bxxx;
+      endcase
+    default:
+  endcase
+end
+
 
 // this is pipelined signal to invert zero when branch is bne
 
