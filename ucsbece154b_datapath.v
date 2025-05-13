@@ -8,10 +8,6 @@
 `define GL_NUM_GHR_BITS 3
 `define GL_NUM_PHT_ENTRIES 1024
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// TO DO: MODIFY FETCH, DECODE, AND EXECUTE STAGE BELOW TO IMPLEMENT BRANCH PREDICTOR
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 module ucsbece154b_datapath (
     input                clk, reset,
     output               MisspredictE_o,  
@@ -35,7 +31,6 @@ module ucsbece154b_datapath (
     input          [2:0] ALUControlE_i,
     input          [1:0] ForwardAE_i,
     input          [1:0] ForwardBE_i,
-  //  output               ZeroE_o,
     output reg     [4:0] RdM_o, 
     output reg    [31:0] ALUResultM_o,
     output reg    [31:0] WriteDataM_o,
@@ -46,55 +41,47 @@ module ucsbece154b_datapath (
     input                BranchE_i,
     input                JumpE_i,
     input                BranchTypeE_i,
-    output wire [31:0] PCNewF_o // NEW: feeds icache ReadAddress
+    output wire [31:0] PCNewF_o
 );
 
 `include "ucsbece154b_defines.vh"
 
-// Define signals earleir if needed here
+parameter pc_start = 32'h00010000; // NEW
+
 wire [31:0] PCTargetE;
 wire [31:0] PCcorrecttargetE;
 reg [31:0] ResultW;
-// wire MisspredictE;
+reg validE; // NEW
 
-// ***** FETCH STAGE *********************************
-
-// Mux feeding to PC
+// FETCH STAGE
 wire [31:0] PCPlus4F = PCF_o + 32'd4;
-
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
-
-wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
-wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
-
-//wire [NUM_GHR_BITS-1:0] PHTindexF;
+wire [31:0] PCTargetF = BranchTakenF ? BTBTargetF : PCPlus4F;
+wire [31:0] PCnewF = MisspredictE_o ? PCcorrecttargetE : PCTargetF;
 wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
 
-// Update registers
 always @ (posedge clk) begin
-    if (reset)        PCF_o <= pc_start;
-    else if (!StallF_i) PCF_o <= PCnewF;
+    if (reset)
+        PCF_o <= pc_start;
+    else if (!StallF_i && (validE || ~MisspredictE_o)) // NEW
+        PCF_o <= PCnewF;
 end
 
-assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
+assign PCNewF_o = PCnewF;
 
-
-// ***** DECODE STAGE ********************************
+// DECODE STAGE
 reg [31:0] InstrD, PCPlus4D, PCD;
 wire [4:0] RdD;
-// reg [`GL_NUM_GHR_BITS-1:0] PHTindexD;
 reg [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexD;
 
 assign op_o       = InstrD[6:0];
 assign funct3_o   = InstrD[14:12];
-assign funct7b5_o = InstrD[30]; 
-
+assign funct7b5_o = InstrD[30];
 assign Rs1D_o = InstrD[19:15];
 assign Rs2D_o = InstrD[24:20];
 assign RdD = InstrD[11:7];
 
-// Register File
 wire [31:0] RD1D, RD2D;
 ucsbece154b_rf rf (
     .clk(~clk),
@@ -103,9 +90,7 @@ ucsbece154b_rf rf (
     .we3_i(RegWriteW_i), .wd3_i(ResultW)
 );
 
-// Sign extension
 reg [31:0] ExtImmD;
-
 always @ * begin
    case(ImmSrcD_i)
       imm_Itype: ExtImmD = {{20{InstrD[31]}},InstrD[31:20]};
@@ -113,22 +98,15 @@ always @ * begin
       imm_Btype: ExtImmD = {{20{InstrD[31]}},InstrD[7],InstrD[30:25], InstrD[11:8],1'b0};
       imm_Jtype: ExtImmD = {{12{InstrD[31]}},InstrD[19:12],InstrD[20],InstrD[30:21],1'b0};
       imm_Utype: ExtImmD = {InstrD[31:12],12'b0};
-      default:   ExtImmD = 32'bx; 
-//            `ifdef SIM
-//            $warning("Unsupported ImmSrc given: %h", ImmSrc_i);
-//            `else
-//            ;
-//            `endif
+      default:   ExtImmD = 32'bx;
    endcase
 end
 
-// Update registers
 always @ (posedge clk) begin
     if (reset | FlushD_i) begin
         InstrD   <= 32'b0;
         PCPlus4D <= 32'b0;
         PCD      <= 32'b0;
-//        PHTindexD <= {`GL_NUM_GHR_BITS{1'b0}};
         PHTindexD <= {$clog2(`GL_NUM_PHT_ENTRIES){1'b0}};
     end else if (!StallD_i) begin 
         InstrD   <= InstrF_i;
@@ -138,47 +116,40 @@ always @ (posedge clk) begin
     end 
 end
 
-
-// ***** EXECUTE STAGE ******************************
+// EXECUTE STAGE
 reg [31:0] RD1E, RD2E, PCPlus4E, ExtImmE, PCE; 
 reg [31:0] ForwardDataM;
-//reg [`GL_NUM_GHR_BITS-1:0] PHTindexE;
 reg [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexE;
 
-// Forwarding muxes 
-reg  [31:0] SrcAE;
+reg [31:0] SrcAE;
 always @ * begin
     case (ForwardAE_i)
        forward_mem: SrcAE = ALUResultM_o; 
-        forward_wb: SrcAE = ResultW;
-        forward_ex: SrcAE = RD1E;
+       forward_wb: SrcAE = ResultW;
+       forward_ex: SrcAE = RD1E;
        default: SrcAE = 32'bx;
     endcase
 end
 
-reg  [31:0] SrcBE;
-reg  [31:0] WriteDataE;
+reg [31:0] SrcBE;
+reg [31:0] WriteDataE;
 always @ * begin
     case (ForwardBE_i)
        forward_mem: WriteDataE = ForwardDataM; 
-        forward_wb: WriteDataE = ResultW;
-        forward_ex: WriteDataE = RD2E;
+       forward_wb: WriteDataE = ResultW;
+       forward_ex: WriteDataE = RD2E;
        default: WriteDataE = 32'bx;
     endcase
 end
 
-
-// Mux feeding ALU Src B
 always @ * begin
     case (ALUSrcE_i)
         SrcB_imm: SrcBE = ExtImmE;
         SrcB_reg: SrcBE = WriteDataE;
-      default: SrcBE = 32'bx;
+        default: SrcBE = 32'bx;
     endcase
 end
 
-
-// ALU
 wire [31:0] ALUResultE;
 ucsbece154b_alu alu (
     .a_i(SrcAE), .b_i(SrcBE),
@@ -187,10 +158,8 @@ ucsbece154b_alu alu (
     .zero_o(ZeroE_o)
 );
 
-// PC Target
 assign PCTargetE = PCE + ExtImmE;
 
-// Update registers
 always @ (posedge clk) begin
     if (reset | FlushE_i) begin
         RD1E     <= 32'b0;
@@ -201,8 +170,8 @@ always @ (posedge clk) begin
         Rs1E_o   <=  5'b0;
         Rs2E_o   <=  5'b0;
         RdE_o    <=  5'b0;
-//        PHTindexE <= {`GL_NUM_GHR_BITS{1'b0}};
         PHTindexE <= {$clog2(`GL_NUM_PHT_ENTRIES){1'b0}};
+        validE   <= 1'b0; // NEW
     end else begin 
         RD1E     <= RD1D;
         RD2E     <= RD2D;
@@ -213,11 +182,11 @@ always @ (posedge clk) begin
         Rs2E_o   <= Rs2D_o;
         RdE_o    <= RdD;
         PHTindexE <= PHTindexD;
+        validE   <= 1'b1; // NEW
     end 
 end
 
-
-// ***** MEMORY STAGE ***************************
+// MEMORY STAGE
 reg [31:0] ExtImmM, PCPlus4M;
 
 always @ * begin
@@ -226,11 +195,9 @@ always @ * begin
      MuxResult_PCPlus4: ForwardDataM = PCPlus4M;
      MuxResult_imm:     ForwardDataM = ExtImmM;
      default:           ForwardDataM = 32'bx;
-
    endcase
- end
+end
 
-// Update registers
 always @ (posedge clk) begin
     if (reset) begin
         ALUResultM_o <= 32'b0;
@@ -247,27 +214,19 @@ always @ (posedge clk) begin
     end 
 end
 
-// ***** WRITEBACK STAGE ************************
+// WRITEBACK STAGE
 reg [31:0] PCPlus4W, ALUResultW, ReadDataW, ExtImmW;
 
 always @ * begin
    case(ResultSrcW_i)
-     MuxResult_mem: ResultW = ReadDataW;
+     MuxResult_mem:     ResultW = ReadDataW;
      MuxResult_aluout:  ResultW = ALUResultW;
-     MuxResult_PCPlus4:  ResultW = PCPlus4W;
-     MuxResult_imm:  ResultW = ExtImmW;
-     default:        ResultW = 32'bx;
-  //          `ifdef SIM
-  //          $warning("Unsupported ResultSrc given: %h", ResultSrc_i);
-  //          `else
-  //          ;
-  //          `endif
+     MuxResult_PCPlus4: ResultW = PCPlus4W;
+     MuxResult_imm:     ResultW = ExtImmW;
+     default:           ResultW = 32'bx;
+endcase
+end
 
-  //   end
-   endcase
- end
-
-// Update registers
 always @ (posedge clk) begin
     if (reset) begin
         ALUResultW <= 32'b0;
@@ -284,19 +243,17 @@ always @ (posedge clk) begin
     end 
 end
 
-// ******** BRANCH PREDICTOR
+// BRANCH PREDICTOR
 
-wire BranchTakenE = BranchE_i & (ZeroE_o ^ BranchTypeE_i);  // BranchTakeE = 1 for branch taken, 0 otherwise
-wire BranchNotTakenE = BranchE_i & ~(ZeroE_o ^ BranchTypeE_i); //  // BranchNotTakeE = 1 for branch not taken, 0 otherwise
+wire BranchTakenE = BranchE_i & (ZeroE_o ^ BranchTypeE_i);
+wire BranchNotTakenE = BranchE_i & ~(ZeroE_o ^ BranchTypeE_i);
 wire nextTakenE = (PCTargetE == PCD); 
-assign MisspredictE_o = (~nextTakenE & (BranchTakenE | JumpE_i)) | (nextTakenE & BranchNotTakenE); 
+assign MisspredictE_o = validE && ((~nextTakenE & (BranchTakenE | JumpE_i)) | (nextTakenE & BranchNotTakenE)); // MODIFIED
 wire MisspredictbranchE = (~nextTakenE & BranchTakenE) | (nextTakenE & BranchNotTakenE);    
 wire BTBupdateE = JumpE_i | BranchTakenE;
 assign PCcorrecttargetE = (BranchTakenE | JumpE_i) ? PCTargetE : PCPlus4E; 
 
-
 ucsbece154b_branch #(`GL_NUM_BTB_ENTRIES, `GL_NUM_GHR_BITS, `GL_NUM_PHT_ENTRIES) bp (
-//ucsbece154b_branch #(`GL_NUM_BTB_ENTRIES, `GL_NUM_GHR_BITS) bp (
     .clk(clk),
     .reset_i(reset), 
     .pc_i(PCF_o),
@@ -313,6 +270,5 @@ ucsbece154b_branch #(`GL_NUM_BTB_ENTRIES, `GL_NUM_GHR_BITS, `GL_NUM_PHT_ENTRIES)
     .PHTwriteindex_i(PHTindexE),
     .PHTreadindex_o(PHTindexF)
 );
-
 
 endmodule
