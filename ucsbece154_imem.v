@@ -52,7 +52,6 @@ wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH]-(TEXT_
 // get read-data 
 wire [31:0] text_data = TEXT[ text_address ];
 
-
 reg [31:0] text_data_out = {ReadAddress[31:4], 4'b0};
 integer word_counter = 0;
 always @ (posedge clk or posedge reset) begin
