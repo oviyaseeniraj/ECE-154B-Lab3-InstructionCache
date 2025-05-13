@@ -134,7 +134,7 @@ always @ (posedge Clk) begin
         end
 
         if (MemDataReady && need_to_write) begin
-            sdram_block[word_counter] <= MemDataIn;
+            sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
                 $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress, refill_set_index, replace_way);
