@@ -22,9 +22,9 @@ always @ * begin
         ALUcontrol_sub: result_o = a_i - b_i;
         ALUcontrol_slt: result_o = {31'b0, ($signed(a_i)<$signed(b_i))};
         default: begin
-            `ifdef SIM
+            //`ifdef SIM
                  //$warning("Unsupported ALUOp given: %h", alucontrol_i);
-            `endif
+            //`endif
             result_o = {32{1'bx}};
         end
     endcase
