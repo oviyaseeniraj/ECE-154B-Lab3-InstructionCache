@@ -93,6 +93,8 @@ always @ (posedge Clk) begin
                     hit_way <= i;
                 end
             end
+            $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
+                $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
         end
 
         // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
@@ -105,8 +107,6 @@ always @ (posedge Clk) begin
         end
 
         if (hit_latched) begin
-            $display("reading cache at time %0t, read_address=%h, set_index=%0b, latched_hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddress, set_index, latched_hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]); // NEW
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
             Instruction <= words[set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
             Ready <= 1;
