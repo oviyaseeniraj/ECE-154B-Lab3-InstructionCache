@@ -93,12 +93,12 @@ always @ (posedge Clk) begin
                     hit_way <= i;
                 end
             end
-            $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
         end
 
         // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
+            $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
+                $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
             hit_latched <= 1;
             latched_hit_way <= hit_way;
             latchedReadAddress <= ReadAddress; // NEW
