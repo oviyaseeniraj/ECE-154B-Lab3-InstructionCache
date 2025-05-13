@@ -21,30 +21,28 @@ module ucsbece154_icache #(
     input                     MemDataReady
 );
 
-// Indexing constants
+// Derived parameters
 localparam WORD_OFFSET = $clog2(4);
 localparam BLOCK_OFFSET = $clog2(BLOCK_WORDS);
 localparam OFFSET = WORD_OFFSET + BLOCK_OFFSET;
 localparam NUM_TAG_BITS = 32 - $clog2(NUM_SETS) - OFFSET;
 
-// Cache data structures
+// Cache structures
 reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg                   valid     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 
-// Track original miss address
+// Address breakdown
+wire [$clog2(NUM_SETS)-1:0] set_index     = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
+wire [NUM_TAG_BITS-1:0]     tag_index     = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
+wire [BLOCK_OFFSET-1:0]     word_offset   = ReadAddress[OFFSET-1:WORD_OFFSET];
+
+// Refilling needs this
 reg [31:0] lastReadAddress;
-
-// Extract fields
-wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
-wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
-
 wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_OFFSET];
 
-// Internal logic
 integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
@@ -52,8 +50,9 @@ reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
-// NEW: latch hit detection
-reg hit_latched; // NEW
+// NEW: persistent hit latch
+reg hit_latched;              // tracks whether a hit was found and needs to be delivered
+reg [31:0] latched_instruction; // holds the instruction to return on hit
 
 always @(posedge Clk) begin
     if (Reset) begin
@@ -65,7 +64,8 @@ always @(posedge Clk) begin
         word_counter <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
-        hit_latched <= 0; // NEW
+        hit_latched <= 0;
+        latched_instruction <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -80,32 +80,28 @@ always @(posedge Clk) begin
     end else begin
         Ready <= 0;
 
-        // If not busy with miss and new fetch is requested
+        // Serve latched hit instruction
+        if (hit_latched) begin
+            Instruction <= latched_instruction;
+            Ready <= 1;
+            hit_latched <= 0; // Clear after issuing Ready
+        end
+
+        // Check for new cache hit
         if (ReadEnable && !Busy && !need_to_write && !hit_latched) begin
-            // Check all ways for hit
-            hit_latched <= 0; // clear default
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_way <= i;
-                    hit_latched <= 1; // NEW: latch hit
+                    latched_instruction <= words[set_index][i][word_offset];
+                    hit_latched <= 1;
                 end
             end
         end
 
-        // NEW: if hit latched, output instruction and keep Ready high
-        if (hit_latched) begin
-            Instruction <= words[set_index][hit_way][word_offset];
-            Ready <= 1;
-            Busy <= 0;
-
-            // Clear latch after serving
-            hit_latched <= 0;
-        end
-
-        // If not hit and not already handling miss, initiate memory read
+        // If not hit, initiate miss handling
         if (ReadEnable && !Busy && !need_to_write && !hit_latched) begin
             lastReadAddress <= ReadAddress;
-            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}};
+            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // block aligned
             MemReadRequest <= 1;
             Busy <= 1;
 
@@ -120,7 +116,7 @@ always @(posedge Clk) begin
             need_to_write <= 1;
         end
 
-        // Refill handling
+        // SDRAM refill
         if (MemDataReady && need_to_write) begin
             sdram_block[word_counter] <= MemDataIn;
 
@@ -133,6 +129,7 @@ always @(posedge Clk) begin
 
                 Instruction <= sdram_block[refill_word_offset];
                 Ready <= 1;
+
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
