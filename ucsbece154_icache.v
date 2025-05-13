@@ -85,7 +85,6 @@ always @ (posedge Clk) begin
             found_empty = 0;
 
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
-                $display("finding hit in way %d\n", i);
                 if (valid[set_index][i] && tags[set_index][i] == tag_index && Busy == 0 && ReadEnable) begin
                     hit = 1;
                     Instruction <= words[set_index][i][lastReadAddress[WORD_OFFSET-1:0]]; // FIX
@@ -95,7 +94,6 @@ always @ (posedge Clk) begin
             end
 
             if (hit == 0) begin
-                $display("miss, need to fetch from memory");
                 lastReadAddress <= ReadAddress; // FIX
                 MemReadAddress <= ReadAddress;
                 MemReadRequest <= 1;
