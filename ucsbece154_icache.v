@@ -42,6 +42,7 @@ reg [1:0] critical_word_index;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg [31:0] target_word;
 reg write_done;
+reg found_empty;
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -78,13 +79,16 @@ always @ (posedge Clk) begin
                 word_counter <= 0;
 
                 // Choose replacement way (empty if available)
+                found_empty = 0;
                 for (j = 0; j < NUM_WAYS; j = j + 1) begin
-                    if (valid[set_index][j] == 0) begin
+                    if (valid[set_index][j] == 0 && !found_empty) begin
                         word_iter_way = j;
-                        disable choose_way;
+                        found_empty = 1;
                     end
                 end
-                word_iter_way = $random % NUM_WAYS; // random if no invalid found
+                if (!found_empty) begin
+                    word_iter_way = $random % NUM_WAYS;
+                end
             end
         end
 
