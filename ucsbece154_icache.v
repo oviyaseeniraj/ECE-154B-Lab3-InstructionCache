@@ -47,6 +47,7 @@ integer i, j, k;
 reg hit;
 reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
+reg found_empty;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg [31:0] target_word;
 reg write_done;
@@ -59,6 +60,7 @@ always @ (posedge Clk) begin
     Ready <= 0;
     Instruction <= 0;
     hit = 0;
+    found_empty <= 0;
     
     for (i = 0; i < NUM_WAYS; i = i + 1) begin
         $display("finding hit in way %d\n", i);
@@ -80,13 +82,14 @@ always @ (posedge Clk) begin
         $display("wordcounter=-1\n");
         for (j = 0; j < NUM_WAYS; j = j + 1) begin
             $display("wordcounter still -1 checking for empty\n");
-            if (valid[set_index][j] == 0 && word_counter == -1) begin
+            if (valid[set_index][j] == 0 && found_empty == 0) begin
                 $display("found empty word space\n");
                 word_iter_way = j;
                 word_counter <= 0;
+                found_empty <= 1;
             end
         end
-        if (word_counter == -1) begin
+        if (found_empty == 0) begin
             $display("no empty word space, random replacement\n");
             word_iter_way = $random % NUM_WAYS; // random replacement
             word_counter <= 0;
