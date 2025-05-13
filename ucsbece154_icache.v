@@ -109,7 +109,7 @@ always @ (posedge Clk) begin
                 $time, ReadAddress, set_index, latched_hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]); // NEW
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
             Instruction <= words[set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
-            //Ready <= 1;
+            Ready <= 1;
             Busy <= 0;
         end
 
@@ -146,7 +146,7 @@ always @ (posedge Clk) begin
                 valid[refill_set_index][replace_way] <= 1;
 
                 Instruction <= sdram_block[refill_word_offset];
-                //Ready <= 1;
+                Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
@@ -157,15 +157,15 @@ always @ (posedge Clk) begin
     end
 end
 
-//set ready
-always @ (*) begin
-    if (MemDataReady && need_to_write) begin
-        Ready = 0;
-    end else if (ReadEnable && !Busy && !need_to_write) begin
-        Ready = 1;
-    end else begin
-        Ready = 0;
-    end
-end
+// //set ready
+// always @ (*) begin
+//     if (MemDataReady && need_to_write) begin
+//         Ready = 0;
+//     end else if (ReadEnable && !Busy && !need_to_write) begin
+//         Ready = 1;
+//     end else begin
+//         Ready = 0;
+//     end
+// end
 
 endmodule
