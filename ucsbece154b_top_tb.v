@@ -71,21 +71,21 @@ wire [31:0] reg_t6 = top.riscv.dp.rf.t6;
 
 integer i;
 initial begin
-$display( "Begin simulation." );
-//\\ =========================== \\//
+    $display( "Begin simulation." );
+    //\\ =========================== \\//
 
-reset = 1;
-@(negedge clk);
-@(negedge clk);
-reset = 0;
-reg prev_ready = 0;
-
-
-// Test for program 
-for (i = 0; i < 10000; i=i+1) begin
+    reset = 1;
     @(negedge clk);
+    @(negedge clk);
+    reset = 0;
+    reg prev_ready = 0;
 
-    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
+
+    // Test for program 
+    for (i = 0; i < 10000; i=i+1) begin
+        @(negedge clk);
+
+        if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
             total_fetches = total_fetches + 1;
             if (top.icache.MemReadRequest == 1)
                 icachemisses = icachemisses + 1;
@@ -93,37 +93,38 @@ for (i = 0; i < 10000; i=i+1) begin
                 icachehits = icachehits + 1;
         end
         prev_ready = top.icache.Ready;
-// counter for jumps
+    // counter for jumps
 
-    // if(top.riscv.dp.BranchE_i) branchtotal++;
-    // if(top.riscv.dp.JumpE_i) jumptotal++;
-    // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
-    // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
+        // if(top.riscv.dp.BranchE_i) branchtotal++;
+        // if(top.riscv.dp.JumpE_i) jumptotal++;
+        // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
+        // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
 
-// counter for branches
+    // counter for branches
 
-//         if(fetchpc==32'h00010068) begin
-//		$display("#cycles = %d", i);  
-//	 break;
-//	 end
-       
-   // `ASSERT(fetchpc == 32'h00010064, ("reached last instruction"));    
-
-
-// WRITE YOUR TEST HERE
-
-// `ASSERT(rg_zero==32'b0, ("reg_zero incorrect"));
-// `ASSERT(MEM_10000070==32'hBEEF000, ("mem.DATA[29] //incorrect"));
+    //         if(fetchpc==32'h00010068) begin
+    //		$display("#cycles = %d", i);  
+    //	 break;
+    //	 end
+        
+    // `ASSERT(fetchpc == 32'h00010064, ("reached last instruction"));    
 
 
-//\\ =========================== \\//
-    $display( "Total fetches: %d", total_fetches);
-    $display( "Total icache hits: %d", icachehits);
-    $display( "Total icache misses: %d", icachemisses);
-    $display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
-    $display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
-    $display( "End simulation.");
-    $stop;
+    // WRITE YOUR TEST HERE
+
+    // `ASSERT(rg_zero==32'b0, ("reg_zero incorrect"));
+    // `ASSERT(MEM_10000070==32'hBEEF000, ("mem.DATA[29] //incorrect"));
+
+
+    //\\ =========================== \\//
+        $display( "Total fetches: %d", total_fetches);
+        $display( "Total icache hits: %d", icachehits);
+        $display( "Total icache misses: %d", icachemisses);
+        $display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
+        $display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
+        $display( "End simulation.");
+        $stop;
+    end
 end
 
 endmodule
