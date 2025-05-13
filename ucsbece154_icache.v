@@ -92,30 +92,40 @@ reg write_done;
 
 always @ (posedge Clk) begin
     // receive data from SDRAM
-    sdram_block[word_counter] <= MemDataIn;
-    word_counter <= word_counter + 1;
-    if (word_counter == MemReadAddress[3:2]) begin
-        target_word <= MemDataIn;
-    end
-    // supply to processor after all words cache controller updates the randomly selected way (block, tag, valid)
-    if (word_counter == BLOCK_WORDS - 1) begin
-        for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-            words[set_index][word_iter_way][k] <= sdram_block[k];
+    if (MemDataReady) begin
+        sdram_block[word_counter] <= MemDataIn;
+        word_counter <= word_counter + 1;
+        if (word_counter == MemReadAddress[3:2]) begin
+            target_word <= MemDataIn;
         end
-        tags[set_index][word_iter_way] <= tag_index;
-        valid[set_index][word_iter_way] <= 1;
-        Busy <= 0;
-        MemReadRequest <= 0;
-        write_done <= 1;
+        // supply to processor after all words cache controller updates the randomly selected way (block, tag, valid)
+        if (word_counter == BLOCK_WORDS - 1) begin
+            for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                words[set_index][word_iter_way][k] <= sdram_block[k];
+            end
+            tags[set_index][word_iter_way] <= tag_index;
+            valid[set_index][word_iter_way] <= 1;
+            Busy <= 0;
+            MemReadRequest <= 0;
+            write_done <= 1;
+        end
     end
 end
 
 always @ (posedge Clk) begin
-    if (write_done) begin
-        Instruction <= target_word;
+    if (Reset) begin
+        Ready <= 0;
+        write_done <= 0;
+    end else begin
+        if (write_done) begin
+            Instruction <= target_word;
+            Ready <= 1;
+            write_done <= 0; // consume write_done after use
+        end else begin
+            Ready <= 0; // default case only when not writing
+        end
     end
-    write_done <= 0;
-    Ready <= 0;
 end
+
 
 endmodule
