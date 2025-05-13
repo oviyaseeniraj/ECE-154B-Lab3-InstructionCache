@@ -99,6 +99,7 @@ reg [31:0] target_word;
 reg write_done;
 
 always @ (posedge Clk) begin
+    $display("gonna write!\n");
     // receive data from SDRAM
     if (Busy && MemDataReady) begin
         if (word_counter == MemReadAddress[3:2]) begin
