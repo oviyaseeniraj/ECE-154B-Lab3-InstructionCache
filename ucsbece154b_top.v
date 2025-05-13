@@ -18,7 +18,7 @@ wire SDRAM_ReadRequest;
 wire SDRAM_DataReady;
 wire ReadyF;
 ucsbece154_icache icache (
-    .clk(clk),
+    .Clk(clk),
     .Reset(reset),
     .ReadEnable(Readenable),          
     .ReadAddress(pc),
