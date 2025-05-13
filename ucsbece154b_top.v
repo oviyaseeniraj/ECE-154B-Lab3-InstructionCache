@@ -28,8 +28,7 @@ ucsbece154b_icache icache (
     .MemReadAddress(SDRAM_ReadAddress),
     .MemReadRequest(SDRAM_ReadRequest),
     .MemDataIn(SDRAM_DataIn),
-    .MemDataReady(SDRAM_DataReady),
-
+    .MemDataReady(SDRAM_DataReady)
 );
 
 
