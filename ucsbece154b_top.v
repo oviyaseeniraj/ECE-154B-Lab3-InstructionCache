@@ -1,63 +1,61 @@
 // ucsbece154b_top.v
-// ECE 154B, RISC-V pipelined processor 
-// All Rights Reserved
-// Copyright (c) 2024 UCSB ECE
-// Distribution Prohibited
-
+// NEW: Baseline instruction cache and memory wiring
 
 module ucsbece154b_top (
     input clk, reset
 );
 
-wire [31:0] pc, pcf, instr, readdata;
-wire [31:0] writedata, dataadr;
-wire  memwrite,Readenable,busy;
-wire [31:0] SDRAM_ReadAddress;
-wire [31:0] SDRAM_DataIn;
-wire SDRAM_ReadRequest;
-wire SDRAM_DataReady;
-wire ReadyF;
-ucsbece154_icache icache (
-    .Clk(clk),
-    .Reset(reset),
-    .ReadEnable(Readenable),          
-    .ReadAddress(pc),
-    .Instruction(instr),
-    .Ready(ReadyF),
-    .Busy(busy),                   
-    .MemReadAddress(SDRAM_ReadAddress),
-    .MemReadRequest(SDRAM_ReadRequest),
-    .MemDataIn(SDRAM_DataIn),
-    .MemDataReady(SDRAM_DataReady)
-);
+// NEW: Signals between datapath, icache, and imem
+wire [31:0] PCF, InstrF;
+wire ReadyF, BusyF;
+wire StallF;
+assign StallF = ~ReadyF;
 
+wire MemReadRequest;
+wire [31:0] MemReadAddress;
+wire [31:0] MemDataIn;
+wire MemDataReady;
 
-// processor and memories are instantiated here
-ucsbece154b_riscv_pipe riscv (
+// Datapath
+ucsbece154b_datapath datapath (
     .clk(clk), .reset(reset),
-    .PCF_o(pc),
-    .InstrF_i(instr),
-    .MemWriteM_o(memwrite),
-    .ALUResultM_o(dataadr), 
-    .WriteDataM_o(writedata),
-    .ReadDataM_i(readdata),
-    .ReadyF(ReadyF), //added Ready instruction to stall fetch stage in case of cache miss
-    .ReadEnable_o(Readenable),
-    .PCNewF(pcf) // NEW: feeds icache ReadAddress
+    .MisspredictE_o(),
+    .StallF_i(StallF),
+    .PCF_o(PCF),
+    .StallD_i(1'b0),
+    .FlushD_i(1'b0),
+    .InstrF_i(InstrF),
+    .op_o(), .funct3_o(), .funct7b5_o(),
+    .RegWriteW(1'b0), .ResultW(32'b0), .RdW(5'b0),
+    .Rs1D_o(), .Rs2D_o(),
+    .ReadDataE(32'b0),
+    .MemWriteM(), .ALUOutM(), .WriteDataM(), .WriteStrobeM(),
+    .PCSrcE_o(), .PCBranchE_o(),
+    .InstrD_o(), .InstrE_o(), .InstrM_o(), .InstrW_o(),
+    .BusyF_o(BusyF), .ReadyF_o(ReadyF), .ReadAddrF(PCF)
 );
-ucsbece154_imem imem (
-    .clk(clk),
-    .reset(reset),
 
-    .ReadRequest(SDRAM_ReadRequest),
-    .ReadAddress(SDRAM_ReadAddress),
-    .DataIn(SDRAM_DataIn),
-    .DataReady(SDRAM_DataReady)
+// Instruction Cache
+ucsbece154b_icache icache (
+    .Clk(clk), .Reset(reset),
+    .ReadEnable(~StallF),
+    .ReadAddress(PCF),
+    .Instruction(InstrF),
+    .Ready(ReadyF),
+    .Busy(BusyF),
+    .MemReadAddress(MemReadAddress),
+    .MemReadRequest(MemReadRequest),
+    .MemDataIn(MemDataIn),
+    .MemDataReady(MemDataReady)
 );
-ucsbece154_dmem dmem (
-    .clk(clk), .we_i(memwrite),
-    .a_i(dataadr), .wd_i(writedata),
-    .rd_o(readdata)
+
+// Emulated SDRAM (main memory)
+ucsbece154_imem imem (
+    .clk(clk), .reset(reset),
+    .ReadRequest(MemReadRequest),
+    .ReadAddress(MemReadAddress),
+    .DataIn(MemDataIn),
+    .DataReady(MemDataReady)
 );
 
 endmodule

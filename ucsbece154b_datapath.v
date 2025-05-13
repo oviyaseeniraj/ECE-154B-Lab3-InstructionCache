@@ -1,16 +1,6 @@
 // ucsbece154b_datapath.v
 // ECE 154B, RISC-V pipelined processor 
-// All Rights Reserved
-// Copyright (c) 2024 UCSB ECE
-// Distribution Prohibited
-
-`define GL_NUM_BTB_ENTRIES 32
-`define GL_NUM_GHR_BITS 3
-`define GL_NUM_PHT_ENTRIES 1024
-
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// TO DO: MODIFY FETCH, DECODE, AND EXECUTE STAGE BELOW TO IMPLEMENT BRANCH PREDICTOR
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Baseline instruction cache integration
 
 module ucsbece154b_datapath (
     input                clk, reset,
@@ -19,66 +9,66 @@ module ucsbece154b_datapath (
     output reg    [31:0] PCF_o,
     input                StallD_i,
     input                FlushD_i,
-    input         [31:0] InstrF_i,
+    // input         [31:0] InstrF_i,           // OLD: input from external imem
     output wire    [6:0] op_o,
     output wire    [2:0] funct3_o,
     output wire          funct7b5_o,
-    input                RegWriteW_i,
-    input          [2:0] ImmSrcD_i,
-    output wire    [4:0] Rs1D_o,
-    output wire    [4:0] Rs2D_o,
-    input  wire          FlushE_i,
-    output reg     [4:0] Rs1E_o,
-    output reg     [4:0] Rs2E_o, 
-    output reg     [4:0] RdE_o, 
-    input                ALUSrcE_i,
-    input          [2:0] ALUControlE_i,
-    input          [1:0] ForwardAE_i,
-    input          [1:0] ForwardBE_i,
-  //  output               ZeroE_o,
-    output reg     [4:0] RdM_o, 
-    output reg    [31:0] ALUResultM_o,
-    output reg    [31:0] WriteDataM_o,
-    input         [31:0] ReadDataM_i,
-    input          [1:0] ResultSrcW_i,
-    output reg     [4:0] RdW_o,
-    input          [1:0] ResultSrcM_i, 
-    input                BranchE_i,
-    input                JumpE_i,
-    input                BranchTypeE_i,
-    output wire [31:0] PCNewF_o // NEW: feeds icache ReadAddress
+    input                RegWriteW,
+    input         [31:0] ResultW,
+    input         [4:0]  RdW,
+    output wire   [4:0]  Rs1D_o,
+    output wire   [4:0]  Rs2D_o,
+    input         [31:0] ReadDataE,
+    output wire          MemWriteM,
+    output wire   [31:0] ALUOutM,
+    output wire   [31:0] WriteDataM,
+    output wire   [3:0]  WriteStrobeM,
+    output wire   [31:0] PCSrcE_o,
+    output wire   [31:0] PCBranchE_o,
+    output wire   [31:0] InstrD_o,
+    output wire   [31:0] InstrE_o,
+    output wire   [31:0] InstrM_o,
+    output wire   [31:0] InstrW_o,
+
+    // NEW: signals to/from instruction cache
+    output               BusyF_o,
+    output               ReadyF_o,
+    output        [31:0] ReadAddrF,
+    input         [31:0] InstrF_i      // NEW: input from icache
 );
 
-`include "ucsbece154b_defines.vh"
+// FETCH STAGE
+reg [31:0] PCF;
+wire [31:0] PCNextF, PCPlus4F;
+assign PCPlus4F = PCF + 4;
+assign PCNextF = PCF;  // to be overridden by branch logic
+assign ReadAddrF = PCNextF;  // NEW: address to icache
+assign ReadyF_o = ReadyF;
+assign BusyF_o  = BusyF;
 
-// Define signals earleir if needed here
-wire [31:0] PCTargetE;
-wire [31:0] PCcorrecttargetE;
-reg [31:0] ResultW;
-// wire MisspredictE;
+// NEW: instruction output from icache
+wire ReadyF, BusyF;
+wire [31:0] InstrF;
+assign InstrF = InstrF_i;
 
-// ***** FETCH STAGE *********************************
-
-// Mux feeding to PC
-wire [31:0] PCPlus4F = PCF_o + 32'd4;
-
-wire [31:0] BTBTargetF;
-wire BranchTakenF;
-
-wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
-wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
-
-//wire [NUM_GHR_BITS-1:0] PHTindexF;
-wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
-
-// Update registers
-always @ (posedge clk) begin
-    if (reset)        PCF_o <= pc_start;
-    else if (!StallF_i) PCF_o <= PCnewF;
+// PC update logic
+always @(posedge clk) begin
+    if (reset)
+        PCF <= 32'h00000000;
+    else if (!StallF_i)
+        PCF <= PCNextF;
 end
+assign PCF_o = PCF;
 
-assign PCNewF_o = PCnewF;
-
+// Pipeline register IF/ID
+reg [31:0] InstrD;
+always @(posedge clk) begin
+    if (reset || FlushD_i)
+        InstrD <= 32'b0;
+    else if (!StallD_i)
+        InstrD <= InstrF;
+end
+assign InstrD_o = InstrD;
 
 // ***** DECODE STAGE ********************************
 reg [31:0] InstrD, PCPlus4D, PCD;

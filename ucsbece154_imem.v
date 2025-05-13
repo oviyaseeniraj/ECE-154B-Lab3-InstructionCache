@@ -1,9 +1,13 @@
+// ucsbece154_imem.v
+// Emulated SDRAM Controller for Lab 3 Baseline ICache
+// NEW: Filled out memory controller module for block burst
+
 `define MIN(A,B) (((A)<(B))?(A):(B))
 
 module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
-    parameter BLOCK_WORDS = 4,
-    parameter T0_DELAY = 40
+    parameter BLOCK_WORDS = 4,          // words per burst (must match cache)
+    parameter T0_DELAY = 40             // first word delay (cycles)
 ) (
     input wire clk,
     input wire reset,
@@ -15,70 +19,61 @@ module ucsbece154_imem #(
     output reg DataReady
 );
 
-// BRAM
-reg [31:0] TEXT [0:TEXT_SIZE-1];
-initial $readmemh("text.dat", TEXT);
+// NEW: Internal ROM (text segment memory)
+reg [31:0] textmem[0:TEXT_SIZE-1];
+initial begin
+    $readmemh("text.dat", textmem);
+end
 
-// Address layout
-localparam TEXT_START = 32'h00010000;
-localparam TEXT_END   = `MIN(TEXT_START + (TEXT_SIZE * 4), 32'h10000000);
-localparam TEXT_ADDRESS_WIDTH = $clog2(TEXT_SIZE);
-
-// Internal state
+// FSM for burst transfer
+localparam IDLE = 0, WAIT_T0 = 1, BURST = 2;
+reg [1:0] state;
+reg [6:0] cycle_counter;  // big enough for T0
+reg [$clog2(BLOCK_WORDS):0] burst_counter;
 reg [31:0] base_addr;
-reg [$clog2(T0_DELAY+1):0] delay_counter;
-reg [$clog2(BLOCK_WORDS):0] word_counter;
-reg reading;
 
-// Computed access address
-wire [31:0] a_i = base_addr + (word_counter << 2);
-wire text_enable = (a_i >= TEXT_START) && (a_i < TEXT_END);
-wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
-wire [31:0] text_data = TEXT[text_address];
-
-always @(posedge clk or posedge reset) begin
+always @(posedge clk) begin
     if (reset) begin
-        DataIn <= 0;
+        state <= IDLE;
         DataReady <= 0;
-        reading <= 0;
-        delay_counter <= 0;
-        word_counter <= 0;
+        DataIn <= 0;
+        cycle_counter <= 0;
+        burst_counter <= 0;
     end else begin
-        DataReady <= 0; // default
-
-        // Start a new burst
-        if (ReadRequest && !reading) begin
-            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
-            delay_counter <= T0_DELAY;
-            word_counter <= 0;
-            reading <= 1;
-        end
-
-        // Handle active burst
-        if (reading) begin
-            if (delay_counter > 0) begin
-                delay_counter <= delay_counter - 1;
-            end else begin
-                if (word_counter < BLOCK_WORDS) begin
-                    DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
-                    DataReady <= 1;
-                    word_counter <= word_counter + 1;
-                    // delay_counter <= T0_DELAY;
-                end else begin
-                    reading <= 0;
+        case (state)
+            IDLE: begin
+                DataReady <= 0;
+                if (ReadRequest) begin
+                    base_addr <= ReadAddress >> 2;  // Convert byte addr to word addr
+                    cycle_counter <= 0;
+                    burst_counter <= 0;
+                    state <= WAIT_T0;
                 end
             end
-        end
+
+            WAIT_T0: begin
+                if (cycle_counter == T0_DELAY) begin
+                    DataIn <= textmem[base_addr + burst_counter];
+                    DataReady <= 1;
+                    burst_counter <= burst_counter + 1;
+                    state <= BURST;
+                end else begin
+                    cycle_counter <= cycle_counter + 1;
+                end
+            end
+
+            BURST: begin
+                if (burst_counter < BLOCK_WORDS) begin
+                    DataIn <= textmem[base_addr + burst_counter];
+                    DataReady <= 1;
+                    burst_counter <= burst_counter + 1;
+                end else begin
+                    DataReady <= 0;
+                    state <= IDLE;
+                end
+            end
+        endcase
     end
 end
 
-`ifdef SIM
-always @* begin
-    if (a_i[1:0] != 2'b0)
-        $warning("Misaligned memory access: 0x%h", a_i);
-end
-`endif
-
 endmodule
-
-`undef MIN
