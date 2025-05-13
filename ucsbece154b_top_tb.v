@@ -1,16 +1,10 @@
-// ucsbece154b_top_tb.v
-// All Rights Reserved
-// Copyright (c) 2024 UCSB ECE
-// Distribution Prohibited
-
-
+// ucsbece154b_top_tb.v (updated for latched ReadAddress in icache)
 `define SIM
 
 `define ASSERT(CONDITION, MESSAGE) if ((CONDITION)==1'b1); else begin $error($sformatf MESSAGE); end
 
 module ucsbece154b_top_tb ();
 
-// test bench contents
 reg clk = 1;
 always #1 clk <= ~clk;
 reg reset;
@@ -24,7 +18,6 @@ integer branchpredictedcorrectly = 0;
 integer total_fetches = 0;
 integer icachehits = 0;
 integer icachemisses = 0;
-integer last_ready = 0;
 
 ucsbece154b_top top (
     .clk(clk), .reset(reset)
@@ -63,46 +56,35 @@ wire [31:0] reg_t4 = top.riscv.dp.rf.t4;
 wire [31:0] reg_t5 = top.riscv.dp.rf.t5;
 wire [31:0] reg_t6 = top.riscv.dp.rf.t6;
 
- wire [31:0] fetchpc = top.riscv.dp.PCPlus4W;
-
-// wire [31:0] MEM_10000000 = top.dmem.DATA[6'd0];
-
-//
+wire [31:0] fetchpc = top.riscv.dp.PCPlus4W;
 
 integer i;
 reg prev_ready = 0;
+reg prev_memread = 0;
 
 initial begin
     $display("Begin simulation.");
-    
     reset = 1;
     @(negedge clk);
     @(negedge clk);
     reset = 0;
 
-    // Run for 10000 cycles
     for (i = 0; i < 10000; i = i + 1) begin
         @(negedge clk);
 
-        // Detect rising edge of Ready when ReadEnable is high
-        if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
+        // Detect edge of Ready going high for a new fetch
+        if (top.icache.ReadEnable && top.icache.Ready && !prev_ready) begin
             total_fetches = total_fetches + 1;
-            if (top.icache.MemReadRequest == 1)
+            if (prev_memread == 1)
                 icachemisses = icachemisses + 1;
             else
                 icachehits = icachehits + 1;
         end
 
         prev_ready = top.icache.Ready;
-
-        // OPTIONAL: Uncomment if you want early stop on a certain PC
-        // if (fetchpc == 32'h00010068) begin
-        //     $display("#cycles = %d", i);
-        //     break;
-        // end
+        prev_memread = top.icache.MemReadRequest;
     end
 
-    // Done simulating, print results
     $display("Total fetches: %d", total_fetches);
     $display("Total icache hits: %d", icachehits);
     $display("Total icache misses: %d", icachemisses);
@@ -117,7 +99,6 @@ initial begin
     $display("End simulation.");
     $stop;
 end
-
 
 endmodule
 
