@@ -77,6 +77,8 @@ always @ (posedge clk) begin
     else if (!StallF_i) PCF_o <= PCnewF;
 end
 
+assign PCNewF_o = PCnewF;
+
 
 // ***** DECODE STAGE ********************************
 reg [31:0] InstrD, PCPlus4D, PCD;
