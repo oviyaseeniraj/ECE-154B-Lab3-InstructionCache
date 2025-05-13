@@ -53,9 +53,9 @@ reg need_to_write = 0;
 
 always @ (posedge Clk) begin
     if (Reset) begin
-        Ready <= 0; // FIX
-        write_done <= 0; // FIX
-        was_hit <= 0; // FIX
+        Ready <= 0;
+        write_done <= 0;
+        was_hit <= 0;
         Instruction <= 0;
         Busy <= 0;
         MemReadAddress <= 0;
@@ -63,7 +63,7 @@ always @ (posedge Clk) begin
         word_counter <= 0;
         need_to_write <= 0;
         target_word <= 0;
-        lastReadAddress <= 0; // FIX
+        lastReadAddress <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -87,14 +87,15 @@ always @ (posedge Clk) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index && Busy == 0 && ReadEnable) begin
                     hit = 1;
-                    Instruction <= words[set_index][i][lastReadAddress[WORD_OFFSET-1:0]]; // FIX
+                    Instruction <= words[set_index][i][lastReadAddress[WORD_OFFSET-1:0]];
                     was_hit <= 1;
                     Busy <= 0;
                 end
             end
 
-            if (hit == 0) begin
-                lastReadAddress <= ReadAddress; // FIX
+            // OLD: if (hit == 0) begin
+            if (hit == 0 && ReadEnable) begin // NEW: only latch lastReadAddress on real cache read
+                lastReadAddress <= ReadAddress; // NEW: correctly latch only when ReadEnable is high
                 MemReadAddress <= ReadAddress;
                 MemReadRequest <= 1;
                 Busy <= 1;
