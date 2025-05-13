@@ -55,6 +55,8 @@ reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
+reg RequestSeen; // NEW: tracks if real request has happened
+
 always @ (posedge Clk) begin
     if (Reset) begin
         Ready <= 0; // FIXED: no fake Ready
@@ -68,6 +70,7 @@ always @ (posedge Clk) begin
         hit_latched <= 0;
         latched_hit_way <= 0;
         hit_this_cycle <= 0;
+        RequestSeen <= 0; // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -82,8 +85,14 @@ always @ (posedge Clk) begin
         Ready <= 0;
         hit_this_cycle <= 0;
 
-        // Hit detection
+        // Register a real request was made
         if (ReadEnable && !Busy && !need_to_write) begin
+            RequestSeen <= 1; // NEW
+        end
+
+        // Only process ReadEnable when past reset and real request has happened
+        // if (ReadEnable && !Busy && !need_to_write) begin
+        if (ReadEnable && !Busy && !need_to_write && RequestSeen) begin // NEW
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_this_cycle <= 1;
@@ -92,8 +101,7 @@ always @ (posedge Clk) begin
             end
         end
 
-        // Latch hit only if it's safe
-        if (hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin // NEW: gated to prevent bad latching
+        if (hit_this_cycle) begin
             hit_latched <= 1;
             latched_hit_way <= hit_way;
         end else begin
@@ -109,7 +117,8 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
 
-        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
+        // if (!hit && ReadEnable && !Busy && !need_to_write) begin
+        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write && RequestSeen) begin // NEW
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
