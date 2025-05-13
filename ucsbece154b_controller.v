@@ -216,7 +216,6 @@ reg firedOnce;
 always @(posedge clk) begin
   if (reset)
     firedOnce <= 0;
-  else
   else begin
     firedOnce <= 1;
   end
