@@ -67,7 +67,7 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
     end
-    if (hit == 0 && Busy == 0) begin
+    if (hit == 0) begin
         $display("miss, need to fetch from memory\n");
         MemReadAddress <= ReadAddress;
         MemReadRequest <= 1;
