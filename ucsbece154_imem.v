@@ -2,8 +2,8 @@
 
 module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
-    parameter BLOCK_WORDS = 4,          // words per burst (must match cache)
-    parameter T0_DELAY = 40             // delay between words
+    parameter BLOCK_WORDS = 4,
+    parameter T0_DELAY = 40
 ) (
     input wire clk,
     input wire reset,
@@ -15,10 +15,11 @@ module ucsbece154_imem #(
     output reg DataReady
 );
 
+// BRAM
 reg [31:0] TEXT [0:TEXT_SIZE-1];
 initial $readmemh("text.dat", TEXT);
 
-// memory layout
+// layout params
 localparam TEXT_START = 32'h00010000;
 localparam TEXT_END   = `MIN(TEXT_START + (TEXT_SIZE * 4), 32'h10000000);
 localparam TEXT_ADDRESS_WIDTH = $clog2(TEXT_SIZE);
@@ -26,12 +27,12 @@ localparam TEXT_ADDRESS_WIDTH = $clog2(TEXT_SIZE);
 // internal state
 reg [31:0] base_addr;
 reg [$clog2(T0_DELAY+1):0] delay_counter;
-reg [$clog2(BLOCK_WORDS+1):0] word_counter;
+reg [$clog2(BLOCK_WORDS):0] word_counter;
 reg reading;
 
-// CURRENT READ ADDRESS
+// computed address
 wire [31:0] a_i = base_addr + (word_counter << 2);
-wire text_enable = (TEXT_START <= a_i) && (a_i < TEXT_END);
+wire text_enable = (a_i >= TEXT_START) && (a_i < TEXT_END);
 wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
 wire [31:0] text_data = TEXT[text_address];
 
@@ -43,10 +44,12 @@ always @(posedge clk or posedge reset) begin
         delay_counter <= 0;
         word_counter <= 0;
     end else begin
+        // default: keep DataReady off unless explicitly set
         DataReady <= 0;
 
+        // start new SDRAM burst
         if (ReadRequest && !reading) begin
-            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to 16B block
+            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
             delay_counter <= T0_DELAY;
             word_counter <= 0;
             reading <= 1;
@@ -57,13 +60,12 @@ always @(posedge clk or posedge reset) begin
                 delay_counter <= delay_counter - 1;
             end else begin
                 if (word_counter < BLOCK_WORDS) begin
-                    DataIn <= text_enable ? text_data : {32{1'bz}};
+                    DataIn <= text_enable ? text_data : 32'hDEADBEEF;
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
-                    delay_counter <= T0_DELAY; // restart delay for next word
+                    delay_counter <= T0_DELAY; // delay before next word
                 end else begin
                     reading <= 0;
-                    DataReady <= 0;
                 end
             end
         end
