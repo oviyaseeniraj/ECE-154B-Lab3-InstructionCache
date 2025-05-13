@@ -77,7 +77,7 @@ always @ (posedge clk) begin
     else if (!StallF_i) PCF_o <= PCnewF;
 end
 
-assign PCNewF_o = PCnewF;
+assign PCNewF_o = reset ? pc_start - 32'd4 : PCnewF;
 
 
 // ***** DECODE STAGE ********************************
