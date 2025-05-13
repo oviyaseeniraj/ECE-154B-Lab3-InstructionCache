@@ -20,6 +20,12 @@ integer jumppredictedcorrectly = 0;
 integer branchtotal = 0;
 integer branchpredictedcorrectly = 0;
 
+// HIT/MISS TRACKING
+integer total_fetches = 0;
+integer icachehits = 0;
+integer icachemisses = 0;
+integer last_ready = 0;
+
 ucsbece154b_top top (
     .clk(clk), .reset(reset)
 );
@@ -79,13 +85,23 @@ reset = 0;
 // Test for program 
 for (i = 0; i < 10000; i=i+1) begin
     @(negedge clk);
-
+    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && Ready != last_ready) begin
+        if (top.icache.MemReadRequest == 1) begin
+            icachemisses = icachemisses + 1;
+            total_fetches = total_fetches + 1;
+        end else begin
+            icachehits = icachehits + 1;
+            total_fetches = total_fetches + 1;
+        end
+        last_ready = top.icache.Ready;
+    end
+    
 // counter for jumps
 
-if(top.riscv.dp.BranchE_i) branchtotal++;
-if(top.riscv.dp.JumpE_i) jumptotal++;
-if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
-if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
+    if(top.riscv.dp.BranchE_i) branchtotal++;
+    if(top.riscv.dp.JumpE_i) jumptotal++;
+    if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
+    if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
 
 // counter for branches
 
@@ -105,6 +121,11 @@ end
 
 
 //\\ =========================== \\//
+$display( "Total fetches: %d", total_fetches);
+$display( "Total icache hits: %d", icachehits);
+$display( "Total icache misses: %d", icachemisses);
+$display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
+$display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
 $display( "End simulation.");
 $stop;
 end
