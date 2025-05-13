@@ -98,10 +98,10 @@ for (i = 0; i < 10000; i=i+1) begin
     
 // counter for jumps
 
-    if(top.riscv.dp.BranchE_i) branchtotal++;
-    if(top.riscv.dp.JumpE_i) jumptotal++;
-    if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
-    if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
+    // if(top.riscv.dp.BranchE_i) branchtotal++;
+    // if(top.riscv.dp.JumpE_i) jumptotal++;
+    // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.BranchE_i) branchpredictedcorrectly++;
+    // if(~top.riscv.dp.MisspredictE_o & top.riscv.dp.JumpE_i) jumppredictedcorrectly++;
 
 // counter for branches
 
