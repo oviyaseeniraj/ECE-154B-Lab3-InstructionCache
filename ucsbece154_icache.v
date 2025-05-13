@@ -57,7 +57,7 @@ reg need_to_write;
 // NEW: Latch the read address for stable word_offset usage
 reg [31:0] latchedReadAddress; // NEW
 
-always @ (posedge Clk) begin
+always @ (negedge Clk) begin
     if (Reset) begin
         Ready <= 0;
         Instruction <= 0;
@@ -83,8 +83,8 @@ always @ (posedge Clk) begin
         end
     end else begin
         // Default values
-        Ready = 0;
-        hit_this_cycle = 0;
+        Ready <= 0;
+        hit_this_cycle <= 0;
 
         // --- HIT DETECTION LOGIC ---
         if (ReadEnable && !Busy && !need_to_write) begin
@@ -110,10 +110,10 @@ always @ (posedge Clk) begin
 
         if (hit_this_cycle) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
-            $display("instr at pc %h is %h", ReadAddress, Instruction);
-            Ready = 1;
-            Busy = 0;
+            Instruction <= words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+            $display("instr at pc %h is %h", latchedReadAddress, Instruction);
+            Ready <= 1;
+            Busy <= 0;
         end
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
