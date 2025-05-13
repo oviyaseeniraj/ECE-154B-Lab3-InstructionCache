@@ -119,7 +119,6 @@ always @ (posedge Clk) begin
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
-            Busy <= 1;
 
             // Choose replacement or empty way
             replace_way <= 0;
@@ -134,6 +133,7 @@ always @ (posedge Clk) begin
         end
 
         if (MemDataReady && need_to_write) begin
+            Busy = 1;
             sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
