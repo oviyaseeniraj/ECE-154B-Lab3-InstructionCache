@@ -21,6 +21,8 @@ module ucsbece154_icache #(
     input                     MemDataReady
 );
 
+initial $display("ICACHE IS ALIVE");
+
 // implementation of the cache here
 localparam WORD_OFFSET = $clog2(4); // word offset
 localparam BLOCK_OFFSET = $clog2(BLOCK_WORDS); // block offset
