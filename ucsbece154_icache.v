@@ -21,13 +21,10 @@ module ucsbece154_icache #(
     input                     MemDataReady
 );
 
-// implementation of the cache here
 localparam WORD_OFFSET = $clog2(4); // word offset
 localparam BLOCK_OFFSET = $clog2(BLOCK_WORDS); // block offset
 localparam OFFSET = WORD_OFFSET + BLOCK_OFFSET; // offset
 localparam NUM_TAG_BITS = 32 - $clog2(NUM_SETS) - OFFSET;
-
-// verilog notation: reg [bits stored] name [number of rows] [number of columns]
 
 // Tags: One tag per way per set
 reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
@@ -40,58 +37,53 @@ reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 
 // use read address to determine the set, way, and block offset and check if there's a hit
 wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-wire [$clog2(NUM_TAG_BITS)-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
+wire [NUM_TAG_BITS-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 
-// read block
 integer i, j, k;
 reg hit;
 reg miss;
 reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
+reg [1:0] critical_word_index;  // stores which word we actually want
 
 always @ (posedge Clk) begin
-    // CHECK READ
-    // read when busy = 0, readenable is raised, valid bit is 1, and tag matches
     MemReadAddress <= 0;
     MemReadRequest <= 0;
     Ready <= 0;
     Instruction <= 0;
     hit = 0;
-    
-    for (i = 0; i < NUM_WAYS; i = i + 1) begin
-        $display("finding hit in way %d\n", i);
-        if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
-            hit = 1;
-            Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
-            Ready <= 1;
-            Busy <= 0;
-        end
-    end
-    if (hit == 0) begin
-        $display("miss, need to fetch from memory\n");
-        MemReadAddress <= ReadAddress;
-        MemReadRequest <= 1;
-        Busy <= 1;
 
-        // multiple words sent, so need to ensure that we receive all. use counters here to track
-        word_counter <= -1;
-        $display("wordcounter=-1\n");
-        for (j = 0; j < NUM_WAYS; j = j + 1) begin
-            $display("wordcounter still -1 checking for empty\n");
-            if (valid[set_index][j] == 0 && word_counter == -1) begin
-                $display("found empty word space\n");
-                word_iter_way = j;
-                word_counter <= 0;
+    if (!Busy && ReadEnable) begin
+        for (i = 0; i < NUM_WAYS; i = i + 1) begin
+            if (valid[set_index][i] && (tags[set_index][i] == tag_index)) begin
+                hit = 1;
+                Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
+                Ready <= 1;
+                Busy <= 0;
             end
         end
-        if (word_counter == -1) begin
-            $display("no empty word space, random replacement\n");
-            word_iter_way = $random % NUM_WAYS; // random replacement
+
+        if (!hit) begin
+            MemReadAddress <= {ReadAddress[31:4], 4'b0000}; // Align to block boundary
+            MemReadRequest <= 1;
+            Busy <= 1;
+            critical_word_index <= ReadAddress[3:2]; // Save the target word index
             word_counter <= 0;
+
+            // Pick replacement way (empty if available)
+            integer found;
+            found = 0;
+            for (j = 0; j < NUM_WAYS; j = j + 1) begin
+                if (valid[set_index][j] == 0 && !found) begin
+                    word_iter_way = j;
+                    found = 1;
+                end
+            end
+            if (!found) begin
+                word_iter_way = $random % NUM_WAYS;
+            end
         end
-        $display("wordcounter=%d\n", word_counter);
     end
-    // check for miss, fetch from memory and write missed block to cache
 end
 
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
@@ -99,14 +91,13 @@ reg [31:0] target_word;
 reg write_done;
 
 always @ (posedge Clk) begin
-    $display("gonna write!\n");
-    // receive data from SDRAM
     if (Busy && MemDataReady) begin
-        if (word_counter == MemReadAddress[3:2]) begin
+        sdram_block[word_counter] <= MemDataIn;
+        if (word_counter == critical_word_index) begin
             target_word <= MemDataIn;
         end
 
-        sdram_block[word_counter] <= MemDataIn;
+        word_counter <= word_counter + 1;
 
         if (word_counter == BLOCK_WORDS - 1) begin
             for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
@@ -118,10 +109,7 @@ always @ (posedge Clk) begin
             MemReadRequest <= 0;
             write_done <= 1;
         end
-
-        word_counter <= word_counter + 1; // Do this last
     end
-
 end
 
 always @ (posedge Clk) begin
@@ -138,6 +126,5 @@ always @ (posedge Clk) begin
         end
     end
 end
-
 
 endmodule
