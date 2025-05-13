@@ -42,7 +42,7 @@ ucsbece154b_riscv_pipe riscv (
     .WriteDataM_o(writedata),
     .ReadDataM_i(readdata),
     .ReadyF(ReadyF), //added Ready instruction to stall fetch stage in case of cache miss
-    .ReadEnable_o(Readenable)
+    .ReadEnable_o(Readenable),
     .PCNewF(pcf) // NEW: feeds icache ReadAddress
 );
 ucsbece154_imem imem (
