@@ -50,6 +50,7 @@ reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
 
 always @ (posedge Clk) begin
+    $display("hi babygirls\n");
     // CHECK READ
     // read when busy = 0, readenable is raised, valid bit is 1, and tag matches
     MemReadAddress <= 0;
