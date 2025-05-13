@@ -85,17 +85,16 @@ reset = 0;
 // Test for program 
 for (i = 0; i < 10000; i=i+1) begin
     @(negedge clk);
-    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && top.icache.Ready != last_ready) begin
-        if (top.icache.MemReadRequest == 1) begin
-            icachemisses = icachemisses + 1;
+    reg prev_ready = 0;
+
+    if (top.icache.ReadEnable == 1 && top.icache.Ready == 1 && prev_ready == 0) begin
             total_fetches = total_fetches + 1;
-        end else begin
-            icachehits = icachehits + 1;
-            total_fetches = total_fetches + 1;
+            if (top.icache.MemReadRequest == 1)
+                icachemisses = icachemisses + 1;
+            else
+                icachehits = icachehits + 1;
         end
-        last_ready = top.icache.Ready;
-    end
-    
+        prev_ready = top.icache.Ready;
 // counter for jumps
 
     // if(top.riscv.dp.BranchE_i) branchtotal++;
@@ -109,7 +108,6 @@ for (i = 0; i < 10000; i=i+1) begin
 //		$display("#cycles = %d", i);  
 //	 break;
 //	 end
-end 
        
    // `ASSERT(fetchpc == 32'h00010064, ("reached last instruction"));    
 
@@ -121,13 +119,13 @@ end
 
 
 //\\ =========================== \\//
-$display( "Total fetches: %d", total_fetches);
-$display( "Total icache hits: %d", icachehits);
-$display( "Total icache misses: %d", icachemisses);
-$display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
-$display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
-$display( "End simulation.");
-$stop;
+    $display( "Total fetches: %d", total_fetches);
+    $display( "Total icache hits: %d", icachehits);
+    $display( "Total icache misses: %d", icachemisses);
+    $display( "Instruction cache hit rate: %f", (icachehits*100)/total_fetches);
+    $display( "Instruction cache miss rate: %f", (icachemisses*100)/total_fetches);
+    $display( "End simulation.");
+    $stop;
 end
 
 endmodule
