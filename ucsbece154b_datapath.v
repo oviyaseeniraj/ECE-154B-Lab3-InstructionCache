@@ -73,11 +73,11 @@ wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
 
 // Update registers
 always @ (posedge clk) begin
-    if (reset)        PCF_o <= pc_start;
+    if (reset)        PCF_o <= pc_start - 32'd4;
     else if (!StallF_i) PCF_o <= PCnewF;
 end
 
-assign PCNewF_o = reset ? pc_start - 32'd4 : PCnewF;
+assign PCNewF_o = reset ? pc_start : PCnewF;
 
 
 // ***** DECODE STAGE ********************************
