@@ -67,7 +67,7 @@ always @ (posedge Clk) begin
         for (i = 0; i < NUM_WAYS; i = i + 1) begin
             $display("finding hit in way %d\n", i);
             if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
-                hit <= 1;
+                hit = 1;
                 Instruction <= words[set_index][i][ReadAddress[WORD_OFFSET-1:0]];
                 Ready <= 1;
                 Busy <= 0;
