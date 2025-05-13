@@ -15,6 +15,7 @@ module ucsbece154b_riscv_pipe (
     input        [31:0] ReadDataM_i,
     input  ReadyF, //added Ready instruction to stall fetch stage in case of cache miss
     output wire ReadEnable_o
+    output wire [31:0] PCNewF // NEW: feeds icache ReadAddress
 );
 
 wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
@@ -98,5 +99,6 @@ ucsbece154b_datapath dp (
     .BranchE_i (BranchE),
     .JumpE_i (JumpE),
     .BranchTypeE_i (BranchTypeE) 
+    .PCNewF_o(PCNewF) // NEW: feeds icache ReadAddress
 );
 endmodule

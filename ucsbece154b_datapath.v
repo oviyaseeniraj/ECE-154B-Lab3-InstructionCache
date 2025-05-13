@@ -46,6 +46,7 @@ module ucsbece154b_datapath (
     input                BranchE_i,
     input                JumpE_i,
     input                BranchTypeE_i
+    output wire [31:0] PCNewF_o, // NEW: feeds icache ReadAddress
 );
 
 `include "ucsbece154b_defines.vh"
@@ -75,6 +76,9 @@ always @ (posedge clk) begin
     if (reset)        PCF_o <= pc_start;
     else if (!StallF_i) PCF_o <= PCnewF;
 end
+
+assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
+
 
 // ***** DECODE STAGE ********************************
 reg [31:0] InstrD, PCPlus4D, PCD;
