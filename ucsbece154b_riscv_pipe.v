@@ -98,7 +98,7 @@ ucsbece154b_datapath dp (
     .ResultSrcM_i (ResultSrcM),
     .BranchE_i (BranchE),
     .JumpE_i (JumpE),
-    .BranchTypeE_i (BranchTypeE) 
+    .BranchTypeE_i (BranchTypeE),
     .PCNewF_o(PCNewF) // NEW: feeds icache ReadAddress
 );
 endmodule
