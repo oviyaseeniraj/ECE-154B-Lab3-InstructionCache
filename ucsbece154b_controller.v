@@ -216,12 +216,11 @@ reg firedOnce;
 always @(posedge clk) begin
   if (reset)
     firedOnce <= 0;
-  else begin
+  else if (Ready_F || firedOnce == ~Ready_F)
     firedOnce <= 1;
-  end
 end
 
-assign StallF_o = lwStall || (firedOnce && ~Ready_F);
+assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
