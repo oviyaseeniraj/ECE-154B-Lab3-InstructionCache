@@ -33,6 +33,9 @@ reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [$clog2(NUM_TAG_BITS)-1:0] tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 
+wire [$clog2(NUM_SETS)-1:0] mem_set_index = MemReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET]; // NEW
+wire [$clog2(NUM_TAG_BITS)-1:0] mem_tag_index = MemReadAddress[31:OFFSET + $clog2(NUM_SETS)];   // NEW
+
 integer i, j, k;
 reg hit;
 reg was_hit; // NEW
@@ -110,7 +113,7 @@ always @ (posedge Clk) begin
 
         if (MemDataReady && need_to_write) begin
             $display("writing back to cache\n");
-            sdram_block[word_counter] = MemDataIn; // Already moved above
+            sdram_block[word_counter] = MemDataIn; // already fixed earlier
 
             if (word_counter == MemReadAddress[3:2]) begin
                 target_word <= MemDataIn;
@@ -118,10 +121,10 @@ always @ (posedge Clk) begin
 
             if (word_counter == BLOCK_WORDS - 1) begin
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-                    words[set_index][word_iter_way][k] <= sdram_block[k];
+                    words[mem_set_index][word_iter_way][k] <= sdram_block[k]; // NEW
                 end
-                tags[set_index][word_iter_way] <= tag_index;
-                valid[set_index][word_iter_way] <= 1;
+                tags[mem_set_index][word_iter_way] <= mem_tag_index;         // NEW
+                valid[mem_set_index][word_iter_way] <= 1;                    // NEW
                 Busy <= 0;
                 MemReadRequest <= 0;
                 write_done <= 1;
@@ -145,7 +148,7 @@ always @ (posedge Clk) begin
             Instruction <= target_word;
             Ready <= 1;
             write_done <= 0;
-        end else if (was_hit) begin // NEW: 1-cycle pulse for hit
+        end else if (was_hit) begin // NEW
             Ready <= 1;
         end else begin
             Ready <= 0;
