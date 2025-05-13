@@ -105,7 +105,7 @@ always @ (posedge Clk) begin
         end
 
         if (hit_latched) begin
-            $display("reading cache at time %0t, read_address=%0b, set_index=%0b, latched_hit_way=%0b, word_offset=%0b", 
+            $display("reading cache at time %0t, read_address=%0h, set_index=%0b, latched_hit_way=%0b, word_offset=%0b", 
                 $time, ReadAddress, set_index, latched_hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]); // NEW
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
             Instruction <= words[set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
@@ -115,7 +115,7 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
-            $display("miss at time %0t, read_address=%0b", $time, ReadAddress);
+            $display("miss at time %0t, read_address=%0h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
             MemReadRequest <= 1;
@@ -137,7 +137,7 @@ always @ (posedge Clk) begin
             sdram_block[word_counter] <= MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
-                $display("writing to cache at time %0t, refill_set_index=%0b, replace_way=%0b", $time, refill_set_index, replace_way);
+                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
                     $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
