@@ -100,7 +100,7 @@ reg write_done;
 
 always @ (posedge Clk) begin
     // receive data from SDRAM
-    if (Busy == 1) begin
+    if (Busy && MemDataReady) begin
         if (word_counter == MemReadAddress[3:2]) begin
             target_word <= MemDataIn;
         end
