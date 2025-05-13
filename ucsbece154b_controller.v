@@ -90,23 +90,31 @@ module ucsbece154b_controller (
 
  always @ * begin
   case(ALUOpD)
-    ALUop_mem:      ALUControlD = ALUcontrol_add;
-    ALUop_beqbne:   ALUControlD = ALUcontrol_sub;
-    ALUop_other: begin
-      case(funct3_i)
-        instr_addsub_funct3: 
-          if (RtypeSubD) ALUControlD = ALUcontrol_sub;
-          else           ALUControlD = ALUcontrol_add;
-        instr_slt_funct3:     ALUControlD = ALUcontrol_slt;  
-        instr_or_funct3:      ALUControlD = ALUcontrol_or;  
-        instr_and_funct3:     ALUControlD = ALUcontrol_and;  
-        default:              ALUControlD = 3'bxxx;
-      endcase
-    end
-    default:        ALUControlD = 3'bxxx;
-  endcase
-end
-
+    ALUop_mem:                 ALUControlD = ALUcontrol_add;
+    ALUop_beqbne:              ALUControlD = ALUcontrol_sub;
+    ALUop_other: 
+       case(funct3_i)
+           instr_addsub_funct3: 
+                 if(RtypeSubD) ALUControlD = ALUcontrol_sub;
+                 else          ALUControlD = ALUcontrol_add;  
+           instr_slt_funct3:   ALUControlD = ALUcontrol_slt;  
+           instr_or_funct3:    ALUControlD = ALUcontrol_or;  
+           instr_and_funct3:   ALUControlD = ALUcontrol_and;  
+           default:            ALUControlD = 3'bxxx;
+        //     `ifdef SIM
+        //         $warning("Unsupported funct3 given: %h", funct3_i);
+        //     `else
+        //         ;
+        //     `endif  
+       endcase
+    default: 
+      `ifdef SIM
+          $warning("Unsupported ALUop given: %h", ALUOpD);
+      `else
+          ;
+      `endif   
+   endcase
+ end
 
 // this is pipelined signal to invert zero when branch is bne
 
@@ -212,7 +220,7 @@ always @(posedge clk) begin
     firedOnce <= 1;
 end
 
- assign StallF_o = lwStall || (~Ready_F && firedOnce) || MisspredictE_i; //added Ready instruction to stall fetch stage in case of cache miss
+ assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
@@ -221,4 +229,3 @@ end
 
 
 endmodule
-
