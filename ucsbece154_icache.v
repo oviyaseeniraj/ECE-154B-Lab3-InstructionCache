@@ -45,6 +45,7 @@ reg miss;
 reg [$clog2(NUM_WAYS)-1:0] word_iter_way;
 reg [1:0] word_counter;
 reg [1:0] critical_word_index;  // stores which word we actually want
+integer found;
 
 always @ (posedge Clk) begin
     MemReadAddress <= 0;
@@ -71,7 +72,6 @@ always @ (posedge Clk) begin
             word_counter <= 0;
 
             // Pick replacement way (empty if available)
-            integer found;
             found = 0;
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 if (valid[set_index][j] == 0 && !found) begin
