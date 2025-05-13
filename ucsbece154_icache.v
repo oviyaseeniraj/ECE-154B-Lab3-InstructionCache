@@ -84,6 +84,7 @@ always @ (posedge Clk) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 if (valid[set_index][j] == 0 && found_empty == 0) begin
                     word_iter_way <= j;
+                    $display("found empty way %d\n", j);
                     word_counter <= 0;
                     found_empty <= 1;
                 end
@@ -97,6 +98,7 @@ always @ (posedge Clk) begin
         end
     end
     if (MemDataReady && need_to_write) begin
+        $display("writing back to cache\n");
         if (word_counter == MemReadAddress[3:2]) begin
             target_word <= MemDataIn;
         end
@@ -114,6 +116,10 @@ always @ (posedge Clk) begin
             write_done <= 1;
         end
         word_counter <= word_counter + 1; // Do this last
+        $display("wordcounter in write=%d\n", word_counter);
+        if (word_counter == BLOCK_WORDS - 1) begin
+            need_to_write <= 0; // reset the need to write flag
+        end
     end
 end
 
