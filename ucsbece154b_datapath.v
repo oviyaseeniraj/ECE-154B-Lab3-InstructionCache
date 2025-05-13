@@ -12,28 +12,22 @@
 // TO DO: MODIFY FETCH, DECODE, AND EXECUTE STAGE BELOW TO IMPLEMENT BRANCH PREDICTOR
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-// ucsbece154b_datapath.v
-// ECE 154B, RISC-V pipelined processor 
-// Baseline instruction cache integration (patched)
-
-`include "ucsbece154b_defines.vh"  // NEW: include macro definitions
-
 module ucsbece154b_datapath (
     input                clk, reset,
-    output               MisspredictE_o,  
+    output               MisspredictE_o,
     input                StallF_i,
     output reg    [31:0] PCF_o,
     input                StallD_i,
     input                FlushD_i,
-    input         [31:0] InstrF_i,      // fixed: this is external input now
-    output wire    [6:0] op_o,
-    output wire    [2:0] funct3_o,
+    input         [31:0] InstrF_i,
+    output wire   [6:0]  op_o,
+    output wire   [2:0]  funct3_o,
     output wire          funct7b5_o,
     input                RegWriteW,
     input         [31:0] ResultW,
     input         [4:0]  RdW,
-    output wire   [5:0]  Rs1D_o,
-    output wire   [5:0]  Rs2D_o,
+    output wire   [4:0]  Rs1D_o,
+    output wire   [4:0]  Rs2D_o,
     input         [31:0] ReadDataE,
     output wire          MemWriteM,
     output wire   [31:0] ALUOutM,
@@ -54,10 +48,10 @@ module ucsbece154b_datapath (
 reg [31:0] PCF;
 wire [31:0] PCNextF, PCPlus4F;
 assign PCPlus4F = PCF + 4;
-assign PCNextF = PCF;  // to be overridden by branch logic
+assign PCNextF = PCF; // override later if branch taken
 assign ReadAddrF = PCNextF;
 
-// PC update logic
+// PC register
 always @(posedge clk) begin
     if (reset)
         PCF <= 32'h00000000;
@@ -66,20 +60,19 @@ always @(posedge clk) begin
 end
 assign PCF_o = PCF;
 
-// Pipeline register IF/ID
-reg [31:0] InstrD;  // only one declaration
+// IF/ID pipeline register
+reg [31:0] InstrD;
 always @(posedge clk) begin
     if (reset || FlushD_i)
         InstrD <= 32'b0;
     else if (!StallD_i)
-        InstrD <= InstrF_i;  // now coming from icache
+        InstrD <= InstrF_i;
 end
 assign InstrD_o = InstrD;
 
-assign ReadyF_o = 1'b1;  // patch default output for compile
-assign BusyF_o  = 1'b0;  // patch default output for compile
-
-// CONTINUE with decode, execute, memory, writeback stages...
+// Wire through dummy outputs for icache connection (replaced in top)
+assign ReadyF_o = 1'b1;  // connect this to icache.Ready in top
+assign BusyF_o  = 1'b0;  // connect this to icache.Busy in top
 
 
 // ***** DECODE STAGE ********************************
