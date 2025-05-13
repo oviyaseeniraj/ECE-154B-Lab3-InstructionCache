@@ -36,7 +36,6 @@ wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:
 wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
 
-// Refills use this stored address
 reg [31:0] lastReadAddress;
 wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
@@ -44,17 +43,11 @@ wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_O
 
 integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
-reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
-reg hit_latched;
-reg hit_this_cycle;
-
+reg hit;
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
-
-// NEW: Latch the read address for stable word_offset usage
-reg [31:0] latchedReadAddress; // NEW
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -66,10 +59,8 @@ always @ (posedge Clk) begin
         word_counter <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
-        hit_latched <= 0;
-        latched_hit_way <= 0;
-        hit_this_cycle <= 0;
-        latchedReadAddress <= 0; // NEW
+        hit <= 0;                   // NEW
+        hit_way <= 0;              // NEW
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -81,47 +72,35 @@ always @ (posedge Clk) begin
             end
         end
     end else begin
-        // Default values
         Ready <= 0;
-        hit_this_cycle <= 0;
+        hit <= 0; // NEW: reset hit flag
 
         // --- HIT DETECTION LOGIC ---
         if (ReadEnable && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit_this_cycle <= 1;
-                    hit_way <= i;
+                    hit <= 1;          // NEW
+                    hit_way <= i;      // NEW
                 end
             end
         end
 
-        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
-        if (hit_this_cycle) begin
-            hit_latched <= 1;
-            latched_hit_way <= hit_way;
-            latchedReadAddress <= ReadAddress; // NEW
-        end else begin
-            hit_latched <= 0;
+        // --- OUTPUT ON HIT ---
+        if (ReadEnable && hit && !Busy && !need_to_write) begin // NEW
+            Instruction <= words[set_index][hit_way][word_offset]; // NEW
+            Ready <= 1; // NEW
+            Busy <= 0;  // NEW
         end
 
-        if (hit_latched) begin
-            $display("reading cache at time %0t, read_address=%h, set_index=%0b, latched_hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddress, set_index, latched_hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]); // NEW
-            // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
-            Ready <= 1;
-            Busy <= 0;
-        end
-
-        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
-        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
+        // --- REFILL ON MISS ---
+        if (ReadEnable && !hit && !Busy && !need_to_write) begin
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
-            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
+            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}};
             MemReadRequest <= 1;
             Busy <= 1;
 
-            // Choose replacement or empty way
+            // Choose replacement way
             replace_way <= 0;
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 if (!valid[set_index][j]) begin
@@ -130,9 +109,10 @@ always @ (posedge Clk) begin
             end
 
             word_counter <= 0;
-            need_to_write = 1;
+            need_to_write <= 1;
         end
 
+        // --- HANDLE REFILL ---
         if (MemDataReady && need_to_write) begin
             sdram_block[word_counter] <= MemDataIn;
 
