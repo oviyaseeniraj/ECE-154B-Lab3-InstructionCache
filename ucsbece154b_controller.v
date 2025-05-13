@@ -222,7 +222,7 @@ end
 
  assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
- assign StallD_o = lwStall || ~Ready_F;f
+ assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
  assign FlushE_o = lwStall | MisspredictE_i; 
   
