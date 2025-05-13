@@ -57,6 +57,7 @@ always @ (posedge Clk) begin
     Ready <= 0;
     Instruction <= 0;
     hit = 0;
+    Busy <= 0;
     
     for (i = 0; i < NUM_WAYS; i = i + 1) begin
         if (valid[set_index][i] && (tags[set_index][i] == tag_index) && Busy == 0 && ReadEnable) begin
