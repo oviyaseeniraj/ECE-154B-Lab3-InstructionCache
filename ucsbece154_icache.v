@@ -98,7 +98,7 @@ always @ (posedge Clk) begin
         end
 
         if (hit_latched) begin
-            $display("reading from cache at time %0t", $time);
+            $display("writing to cache at time %0t, set_index=%0b, latched_hit_way=%0b", $time, set_index, latched_hit_way);
             Instruction <= words[set_index][latched_hit_way][word_offset];
             Ready <= 1;
             Busy <= 0;
@@ -126,7 +126,7 @@ always @ (posedge Clk) begin
             sdram_block[word_counter] <= MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
-                $display("writing to cache at time %0t", $time);
+                $display("writing to cache at time %0t, refill_set_index=%0b, replace_way=%0b", $time, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
                 end
