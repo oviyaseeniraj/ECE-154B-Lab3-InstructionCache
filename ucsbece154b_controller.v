@@ -220,7 +220,7 @@ always @(posedge clk) begin
     firedOnce <= 1;
 end
 
- assign StallF_o = lwStall || (~Ready_F && firedOnce && ~MisspredictE_i);
+ assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;

@@ -17,6 +17,7 @@ wire [31:0] SDRAM_DataIn;
 wire SDRAM_ReadRequest;
 wire SDRAM_DataReady;
 wire ReadyF;
+wire flush;
 ucsbece154_icache icache (
     .Clk(clk),
     .Reset(reset),
@@ -28,7 +29,8 @@ ucsbece154_icache icache (
     .MemReadAddress(SDRAM_ReadAddress),
     .MemReadRequest(SDRAM_ReadRequest),
     .MemDataIn(SDRAM_DataIn),
-    .MemDataReady(SDRAM_DataReady)
+    .MemDataReady(SDRAM_DataReady),
+    .FlushF(flush)
 );
 
 
@@ -43,7 +45,10 @@ ucsbece154b_riscv_pipe riscv (
     .ReadDataM_i(readdata),
     .ReadyF(ReadyF), //added Ready instruction to stall fetch stage in case of cache miss
     .ReadEnable_o(Readenable),
-    .PCNewF(pcf) // NEW: feeds icache ReadAddress
+    .PCNewF(pcf), // NEW: feeds icache ReadAddress
+    .MemDataReady(SDRAM_DataReady),
+    .Busy(busy),
+    .FlushF(flush)
 );
 ucsbece154_imem imem (
     .clk(clk),

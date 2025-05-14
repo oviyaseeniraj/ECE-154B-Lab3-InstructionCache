@@ -18,7 +18,8 @@ module ucsbece154_icache #(
     output reg [31:0]         MemReadAddress,
     output reg                MemReadRequest,
     input      [31:0]         MemDataIn,
-    input                     MemDataReady
+    input                     MemDataReady,
+    input                     FlushF
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -112,7 +113,7 @@ always @ (posedge Clk) begin
 
         if (hit_this_cycle) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
@@ -142,7 +143,7 @@ always @ (posedge Clk) begin
             sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
-                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress, refill_set_index, replace_way);
+                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
                     $display("sdram_block[%0d] = %0h", k, sdram_block[k]);

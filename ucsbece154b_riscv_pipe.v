@@ -15,7 +15,10 @@ module ucsbece154b_riscv_pipe (
     input        [31:0] ReadDataM_i,
     input  ReadyF, //added Ready instruction to stall fetch stage in case of cache miss
     output wire ReadEnable_o,
-    output wire [31:0] PCNewF // NEW: feeds icache ReadAddress
+    output wire [31:0] PCNewF, // NEW: feeds icache ReadAddress
+    input Busy,
+    input MemDataReady,
+    output FlushF
 );
 
 wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
@@ -28,7 +31,7 @@ wire [1:0] ForwardAE, ForwardBE, ResultSrcW, ResultSrcM;
 wire [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW;
 wire BranchE, JumpE, BranchTypeE, MisspredictE;
 assign ReadEnable_o = ~StallF;
-
+assign FlushF = FlushD;
 
 ucsbece154b_controller c (
     .clk(clk), .reset(reset),
@@ -99,6 +102,9 @@ ucsbece154b_datapath dp (
     .BranchE_i (BranchE),
     .JumpE_i (JumpE),
     .BranchTypeE_i (BranchTypeE),
-    .PCNewF_o(PCNewF) // NEW: feeds icache ReadAddress
+    .PCNewF_o(PCNewF), // NEW: feeds icache ReadAddress
+    .Busy_i(Busy),
+    .MemDataReady_i(MemDataReady),
+    .ReadyF_i(ReadyF)
 );
 endmodule

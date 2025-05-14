@@ -46,7 +46,10 @@ module ucsbece154b_datapath (
     input                BranchE_i,
     input                JumpE_i,
     input                BranchTypeE_i,
-    output wire [31:0] PCNewF_o // NEW: feeds icache ReadAddress
+    output wire [31:0] PCNewF_o, // NEW: feeds icache ReadAddress
+    input		 Busy_i,
+    input  		 MemDataReady_i,
+    input		 ReadyF_i
 );
 
 `include "ucsbece154b_defines.vh"
@@ -65,6 +68,8 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
 
+wire PCenable = (ReadyF_i | MisspredictE_o) && ~Busy_i && ~MemDataReady_i;
+
 wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
 wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
 
@@ -74,11 +79,10 @@ wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
 // Update registers
 always @ (posedge clk) begin
     if (reset)        PCF_o <= pc_start;
-    else if (!StallF_i) PCF_o <= PCnewF;
+    // else if (!StallF_i) PCF_o <= PCnewF;
+    else if (PCenable) PCF_o <= PCnewF;
 end
-
 assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
-
 
 // ***** DECODE STAGE ********************************
 reg [31:0] InstrD, PCPlus4D, PCD;
