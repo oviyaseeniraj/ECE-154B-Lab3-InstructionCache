@@ -98,6 +98,7 @@ always @ (posedge Clk) begin
             end
         end
 
+        /**
         // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
             $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
@@ -109,14 +110,7 @@ always @ (posedge Clk) begin
         end else begin
             hit_latched <= 0;
         end
-
-        if (hit_this_cycle) begin
-            // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[set_index][hit_way][ReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
-            $display("instr at pc %h is %h", ReadAddr, Instruction);
-            Ready <= 1;
-            Busy <= 0;
-        end
+        */
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
@@ -162,4 +156,15 @@ always @ (posedge Clk) begin
     end
 end
 
+always @ (negedge Clk) begin
+    if (~Reset) begin
+        if (hit_this_cycle) begin
+            // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
+            Instruction <= words[set_index][hit_way][ReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
+            $display("instr at pc %h is %h", ReadAddr, Instruction);
+            Ready <= 1;
+            Busy <= 0;
+        end
+    end
+end
 endmodule
