@@ -6,7 +6,7 @@
 
 
 // Misc
-localparam   [31:0] pc_start = 32'h00010000;
+localparam   [31:0] pc_start = 32'h0000fffc;
 
 // ***** FETCH STAGE ****
 // Mux to feed PC for mispredicts

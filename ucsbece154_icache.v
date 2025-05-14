@@ -56,7 +56,6 @@ reg need_to_write;
 
 // NEW: Latch the read address for stable word_offset usage
 reg [31:0] latchedReadAddress; // NEW
-wire [31:0] ReadAddr = ReadAddress - 4;
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -111,7 +110,7 @@ always @ (posedge Clk) begin
 
         if (hit_this_cycle) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[set_index][hit_way][ReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
+            Instruction <= words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
