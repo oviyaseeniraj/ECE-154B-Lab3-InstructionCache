@@ -54,10 +54,9 @@ reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
-wire latchedReadAddr = latchedReadAddress - 4;
-
 // NEW: Latch the read address for stable word_offset usage
 reg [31:0] latchedReadAddress; // NEW
+wire [31:0] latchedReadAddr = latchedReadAddress - 4;
 
 always @ (posedge Clk) begin
     if (Reset) begin
