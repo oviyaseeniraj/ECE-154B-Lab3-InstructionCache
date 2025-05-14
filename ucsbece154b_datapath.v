@@ -69,7 +69,7 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
 
-assign PCEnable = (ReadyF_i | MisspredictE_o) && ~Busy_i && ~MemDataReady_i;
+assign PCEnable = (ReadyF_i) && ~Busy_i && ~MemDataReady_i;
 
 wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
 wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
