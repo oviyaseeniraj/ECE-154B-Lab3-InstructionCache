@@ -102,7 +102,7 @@ always @ (posedge Clk) begin
                 $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
             hit_latched <= 1;
             latched_hit_way <= hit_way;
-            latchedReadAddress <= ReadAddress; // NEW
+            latchedReadAddress <= ReadAddress - 4; // NEW
             latched_set_index <= set_index;
         end else begin
             hit_latched <= 0;
