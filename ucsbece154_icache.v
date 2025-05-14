@@ -38,8 +38,6 @@ wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddr[OFFSET + $clog2(NUM_SETS)-1:OFF
 wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddr[31:OFFSET + $clog2(NUM_SETS)];
 wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddr[OFFSET-1:WORD_OFFSET];
 
-reg [$clog2(NUM_SETS)-1:0] set_index_reg;
-
 // Refills use this stored address
 reg [31:0] lastReadAddress;
 wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
@@ -100,7 +98,6 @@ always @ (posedge Clk) begin
             end
         end
 
-        /**
         // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
             $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
@@ -112,12 +109,10 @@ always @ (posedge Clk) begin
         end else begin
             hit_latched <= 0;
         end
-        */
 
-        if (hit_this_cycle) begin
+        if (hit_latched) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            set_index_reg = ReadAddr[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-            Instruction <= words[set_index_reg][hit_way][ReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
+            Instruction <= words[set_index][hit_way][ReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", ReadAddr, Instruction);
             Ready <= 1;
             Busy <= 0;
