@@ -54,6 +54,8 @@ reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
+wire latchedReadAddr = latchedReadAddress - 4;
+
 // NEW: Latch the read address for stable word_offset usage
 reg [31:0] latchedReadAddress; // NEW
 
@@ -99,7 +101,7 @@ always @ (posedge Clk) begin
         // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
         if (hit_this_cycle) begin
             $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
+                $time, ReadAddress, set_index, hit_way, ReadAddress[OFFSET-1:WORD_OFFSET]);
             hit_latched <= 1;
             latched_hit_way <= hit_way;
             latchedReadAddress <= ReadAddress; // NEW
@@ -110,7 +112,7 @@ always @ (posedge Clk) begin
 
         if (hit_latched) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[latched_set_index][latched_hit_way][(latchedReadAddress - 4)[OFFSET-1:WORD_OFFSET]]; // NEW
+            Instruction <= words[latched_set_index][latched_hit_way][latchedReadAddr[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", latchedReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
