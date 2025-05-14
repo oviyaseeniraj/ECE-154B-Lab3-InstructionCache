@@ -102,7 +102,7 @@ always @ (posedge Clk) begin
                 $time, ReadAddress, set_index, hit_way, latchedReadAddress[OFFSET-1:WORD_OFFSET]);
             hit_latched <= 1;
             latched_hit_way <= hit_way;
-            latchedReadAddress <= ReadAddress - 4; // NEW
+            latchedReadAddress <= ReadAddress; // NEW
             latched_set_index <= set_index;
         end else begin
             hit_latched <= 0;
@@ -110,7 +110,7 @@ always @ (posedge Clk) begin
 
         if (hit_latched) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-            Instruction <= words[latched_set_index][latched_hit_way][latchedReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+            Instruction <= words[latched_set_index][latched_hit_way][(latchedReadAddress - 4)[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", latchedReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
