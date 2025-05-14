@@ -58,6 +58,24 @@ reg need_to_write;
 // NEW: Latch the read address for stable word_offset usage
 reg [31:0] latchedReadAddress; // NEW
 
+always @ (*) begin
+    if (hit_this_cycle) begin
+        Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+        Ready <= 1;
+        Busy <= 0;
+    end
+    if (MemDataReady && need_to_write && word_counter == BLOCK_WORDS - 1) begin
+        Instruction <= sdram_block[refill_word_offset];
+        Ready <= 1;
+        Busy <= 0;
+        MemReadRequest <= 0;
+        need_to_write <= 0;
+
+        tags[refill_set_index][replace_way] <= refill_tag_index;
+        valid[refill_set_index][replace_way] <= 1;
+    end
+end
+
 always @ (posedge Clk) begin
     if (Reset) begin
         Ready <= 0;
@@ -111,13 +129,13 @@ always @ (posedge Clk) begin
         end
         */
 
-        if (hit_this_cycle) begin
-            // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
-            $display("instr at pc %h is %h", ReadAddress, Instruction);
-            Ready <= 1;
-            Busy <= 0;
-        end
+        // if (hit_this_cycle) begin
+        //     // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
+	    // Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+        //     $display("instr at pc %h is %h", ReadAddress, Instruction);
+        //     Ready <= 1;
+        //     Busy <= 0;
+        // end
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
@@ -148,14 +166,14 @@ always @ (posedge Clk) begin
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
                     $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
                 end
-                tags[refill_set_index][replace_way] <= refill_tag_index;
-                valid[refill_set_index][replace_way] <= 1;
+                // tags[refill_set_index][replace_way] <= refill_tag_index;
+                // valid[refill_set_index][replace_way] <= 1;
 
-                Instruction <= sdram_block[refill_word_offset];
-                Ready <= 1;
-                Busy <= 0;
-                MemReadRequest <= 0;
-                need_to_write <= 0;
+                // Instruction <= sdram_block[refill_word_offset];
+                // Ready <= 1;
+                // Busy <= 0;
+                // MemReadRequest <= 0;
+                // need_to_write <= 0;
             end
 
             word_counter <= word_counter + 1;
