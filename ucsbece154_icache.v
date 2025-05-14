@@ -19,7 +19,7 @@ module ucsbece154_icache #(
     output reg                MemReadRequest,
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
-    input                     FlushF
+    input                     PCEnable
 );
 
 localparam WORD_OFFSET   = $clog2(4);

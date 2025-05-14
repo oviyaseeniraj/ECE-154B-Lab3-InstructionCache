@@ -49,7 +49,8 @@ module ucsbece154b_datapath (
     output wire [31:0] PCNewF_o, // NEW: feeds icache ReadAddress
     input		 Busy_i,
     input  		 MemDataReady_i,
-    input		 ReadyF_i
+    input		 ReadyF_i,
+    output		 PCEnable
 );
 
 `include "ucsbece154b_defines.vh"
@@ -68,7 +69,7 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
 
-wire PCenable = (ReadyF_i | MisspredictE_o) && ~Busy_i && ~MemDataReady_i;
+assign PCEnable = (ReadyF_i | MisspredictE_o) && ~Busy_i && ~MemDataReady_i;
 
 wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
 wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
@@ -80,7 +81,7 @@ wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
 always @ (posedge clk) begin
     if (reset)        PCF_o <= pc_start;
     // else if (!StallF_i) PCF_o <= PCnewF;
-    else if (PCenable) PCF_o <= PCnewF;
+    else if (PCEnable) PCF_o <= PCnewF;
 end
 assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
 
@@ -193,6 +194,7 @@ ucsbece154b_alu alu (
 
 // PC Target
 assign PCTargetE = PCE + ExtImmE;
+reg [31:0] InstrE;
 
 // Update registers
 always @ (posedge clk) begin
@@ -205,6 +207,7 @@ always @ (posedge clk) begin
         Rs1E_o   <=  5'b0;
         Rs2E_o   <=  5'b0;
         RdE_o    <=  5'b0;
+	InstrE   <= 32'b0;
 //        PHTindexE <= {`GL_NUM_GHR_BITS{1'b0}};
         PHTindexE <= {$clog2(`GL_NUM_PHT_ENTRIES){1'b0}};
     end else begin 
@@ -217,6 +220,7 @@ always @ (posedge clk) begin
         Rs2E_o   <= Rs2D_o;
         RdE_o    <= RdD;
         PHTindexE <= PHTindexD;
+	InstrE <= InstrD;
     end 
 end
 
