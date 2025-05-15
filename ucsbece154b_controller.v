@@ -209,7 +209,7 @@ module ucsbece154b_controller (
 
 // Stall logic
  wire lwStall; 
- assign StallF_o = lwStall || ~Ready_F || MispredictE_i;
+ assign StallF_o = lwStall || ~Ready_F || MisspredictE_i;
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
  assign FlushE_o = lwStall | MisspredictE_i; 
