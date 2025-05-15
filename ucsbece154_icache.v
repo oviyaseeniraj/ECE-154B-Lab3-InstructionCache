@@ -52,6 +52,7 @@ reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
 reg [31:0] latchedReadAddress;
+reg hit_this_cycle = 0;
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -76,8 +77,6 @@ always @ (posedge Clk) begin
         end
     end else begin
         Ready <= 0;
-        
-        reg hit_this_cycle = 0;
         for (i = 0; i < NUM_WAYS; i = i + 1) begin
             if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                 hit_this_cycle = 1;
