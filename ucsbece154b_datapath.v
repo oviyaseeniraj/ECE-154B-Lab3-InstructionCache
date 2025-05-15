@@ -69,6 +69,7 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
 reg MisspredictM;
+reg [31:0] PCE;
 
 assign PCEnable = (ReadyF_i) && ~Busy_i && ~MemDataReady_i;
 
@@ -83,6 +84,7 @@ always @ (posedge clk) begin
     if (reset)        PCF_o <= pc_start;
     // else if (!StallF_i) PCF_o <= PCnewF;
     else if (PCEnable) PCF_o <= PCnewF;
+    else if (MisspredictE_o) PCF_o <= PCE;
 end
 assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
 
@@ -146,7 +148,7 @@ end
 
 
 // ***** EXECUTE STAGE ******************************
-reg [31:0] RD1E, RD2E, PCPlus4E, ExtImmE, PCE; 
+reg [31:0] RD1E, RD2E, PCPlus4E, ExtImmE; 
 reg [31:0] ForwardDataM;
 //reg [`GL_NUM_GHR_BITS-1:0] PHTindexE;
 reg [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexE;

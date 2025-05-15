@@ -192,7 +192,7 @@ module ucsbece154b_controller (
 
 // Forwarding logic
  always @ * begin
-  if      ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
+  if ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_mem;
   else if ( (Rs1E_i == RdW_i) & RegWriteW_o & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_wb;
@@ -200,7 +200,7 @@ module ucsbece154b_controller (
  end
   
  always @ * begin
-  if      ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
+  if ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_mem;
   else if ( (Rs2E_i == RdW_i) & RegWriteW_o & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_wb;
@@ -220,7 +220,7 @@ always @(posedge clk) begin
     firedOnce <= 1;
 end
 
- assign StallF_o = lwStall || (~Ready_F && firedOnce | MisspredictE_i);
+ assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
