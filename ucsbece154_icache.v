@@ -89,7 +89,7 @@ always @ (posedge Clk) begin
         hit_this_cycle <= 0;
 
         // --- HIT DETECTION LOGIC ---
-        if (ReadEnable && !Mispredict && !Busy && !need_to_write) begin
+        if (ReadEnable && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_this_cycle = 1;
@@ -142,7 +142,6 @@ always @ (posedge Clk) begin
         if (Mispredict && MemReadRequest && need_to_write) begin
             $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
             Busy <= 0;
-            Ready <= 1;
             MemReadRequest <= 0;
             need_to_write <= 0;
             word_counter <= 0;
