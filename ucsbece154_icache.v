@@ -141,11 +141,12 @@ always @ (posedge Clk) begin
         end
 
         if (MemDataReady && need_to_write) begin
-            Busy = 1;
+            Busy <= 1;
             sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == 0 && ADVANCED) begin
                 Instruction <= sdram_block[refill_word_offset];
+                Ready <= 1;
             end
 
             if (word_counter == BLOCK_WORDS - 1) begin
