@@ -57,7 +57,7 @@ reg [1:0] word_counter;
 reg [1:0] offset;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
-
+reg early_restart;
 reg [31:0] latchedReadAddress;
 
 always @ (posedge Clk) begin
@@ -75,6 +75,7 @@ always @ (posedge Clk) begin
         latched_hit_way <= 0;
         hit_this_cycle <= 0;
         latchedReadAddress <= 0;
+        early_restart <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -88,8 +89,8 @@ always @ (posedge Clk) begin
     end else begin
         // Default values
         Ready <= 0;
-	imem_reset <= 0;
-	hit_this_cycle = 0;
+        imem_reset <= 0;
+        hit_this_cycle = 0;
 
         // --- HIT DETECTION LOGIC ---
         if (Misprediction || (ReadEnable && !Busy && !need_to_write)) begin
@@ -123,7 +124,7 @@ always @ (posedge Clk) begin
 	    end
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
-            MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
+            MemReadAddress <= ReadAddress; // align to block
             MemReadRequest <= 1;
 
             // Choose replacement or empty way
@@ -144,14 +145,13 @@ always @ (posedge Clk) begin
             
             if (ADVANCED) begin
                 if (word_counter == 0) begin
-                    sdram_block[refill_word_offset] = MemDataIn;
-                    Instruction <= MemDataIn;
-                    Ready <= 1;
+                    sdram_block[refill_word_offset] <= MemDataIn;
+                    early_restart <= 1;
                 end else begin
                     if (offset == refill_word_offset) begin
                         offset = offset + 1;
                     end
-                    sdram_block[offset] = MemDataIn;
+                    sdram_block[offset] <= MemDataIn;
                 end
             end else begin
                 sdram_block[word_counter] = MemDataIn;
@@ -174,9 +174,13 @@ always @ (posedge Clk) begin
                 MemReadRequest <= 0;
                 need_to_write <= 0;
             end
-
             word_counter <= word_counter + 1;
             offset <= offset + 1;
+        end
+        if (early_restart) begin
+            Instruction <= sdram_block[refill_word_offset];
+            Ready <= 1;
+            early_restart <= 0;
         end
     end
 end
