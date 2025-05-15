@@ -19,8 +19,7 @@ module ucsbece154b_riscv_pipe (
     input Busy,
     input MemDataReady,
     output PCEnable,
-    output Mispredict,
-    output Flush
+    output Mispredict
 );
 
 wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
@@ -51,7 +50,7 @@ ucsbece154b_controller c (
     .Ready_F(ReadyF), //added Ready instruction to stall fetch stage in case of cache miss 
     .StallF_o(StallF),  
     .StallD_o(StallD),
-    .FlushD_o(Flush),
+    .FlushD_o(FlushD),
     .ImmSrcD_o(ImmSrcD),
     .MisspredictE_i(Mispredict),
     .ALUControlE_o(ALUControlE),
@@ -75,7 +74,7 @@ ucsbece154b_datapath dp (
     .StallF_i(StallF),
     .PCF_o(PCF_o),
     .StallD_i(StallD),
-    .FlushD_i(Flush),
+    .FlushD_i(FlushD),
     .InstrF_i(InstrF_i),
     .op_o(op),
     .funct3_o(funct3),
