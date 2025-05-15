@@ -207,9 +207,17 @@ module ucsbece154b_controller (
   else   ForwardBE_o = forward_ex;
  end
 
+reg firedOnce; // used to track if the pipeline has been fired once
+always @(posedge clk) begin
+    if(reset) begin 
+       firedOnce <= 1'b0;
+    end else if (Ready_F) begin
+       firedOnce <= 1'b1;
+    end
+end
 // Stall logic
  wire lwStall; 
- assign StallF_o = lwStall || ~Ready_F || MisspredictE_i;
+ assign StallF_o = lwStall || (~Ready_F && firedOnce) || MisspredictE_i;
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
  assign FlushE_o = lwStall | MisspredictE_i; 
