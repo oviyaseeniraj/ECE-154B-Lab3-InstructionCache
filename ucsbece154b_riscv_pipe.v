@@ -31,6 +31,15 @@ wire [2:0] ALUControlE;
 wire [1:0] ForwardAE, ForwardBE, ResultSrcW, ResultSrcM;
 wire [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW;
 wire BranchE, JumpE, BranchTypeE;
+reg ReadEnable_r;
+always @(posedge clk or posedge reset) begin
+    if (reset || Mispredict)
+        ReadEnable_r <= 1'b1;
+    else if (ReadyF)
+        ReadEnable_r <= 1'b0;
+end
+assign ReadEnable_o = ReadEnable_r || ~StallF;
+
 assign ReadEnable_o = ~StallF;
 
 ucsbece154b_controller c (

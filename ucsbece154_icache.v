@@ -121,7 +121,7 @@ always @ (posedge Clk) begin
         end
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
-        if (!hit_this_cycle && !Mispredict && ReadEnable && !Busy && !need_to_write) begin
+        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
