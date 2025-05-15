@@ -92,6 +92,7 @@ always @ (posedge Clk) begin
         need_to_write <= 0;
         word_counter <= 0;
         Ready <= 0;
+        lastReadAddress <= 32'hFFFFFFFF; // NEW: Clear invalid state
     end else begin
         // Default values
         Ready <= 0;
