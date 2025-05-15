@@ -17,7 +17,7 @@ OUTER:  beq     t3, t4, END        # using on purpose not   	# 24 03de0e63	20
 	addi    s0, s0, 1            # countx++;					# 34 00140413	30
 SKIPX:  beq     t1, x0, SKIPY      								# 38 00030463	34
 	addi    s1, s1, 1            # county++;					# 3c 00148493	38
-SKIPY:  beq     t2, x0, SKIPZ      								# 40 00038463	3c
+SKIPY:  beq     t2, x0, SKIPZ      								# 40 00038463	3c	
 	addi    s2, s2, 1            # countz++;					# 44 00190913	40
 SKIPZ:  addi    t5, x0, 0            # beginning of inner loop 	# 48 00000f13	44
 INNER:  addi    t5, t5, 1            # inner++;   				# 4c 001f0f13	48
