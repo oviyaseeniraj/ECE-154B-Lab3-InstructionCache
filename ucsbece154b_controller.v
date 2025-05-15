@@ -211,7 +211,7 @@ reg firedOnce; // used to track if the pipeline has been fired once
 always @(posedge clk) begin
     if(reset) 
        firedOnce <= 0;
-    end else
+    else
        firedOnce <= 1;
 end
 // Stall logic
