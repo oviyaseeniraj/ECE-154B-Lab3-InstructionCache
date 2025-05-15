@@ -79,13 +79,16 @@ wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
 //wire [NUM_GHR_BITS-1:0] PHTindexF;
 wire [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexF;
 
-// Update registers
 always @ (posedge clk) begin
-    if (reset)        PCF_o <= pc_start;
-    // else if (!StallF_i) PCF_o <= PCnewF;
-    else if (PCEnable) PCF_o <= PCnewF;
-    else if (MisspredictE_o) PCF_o <= PCE;
+    if (reset) begin
+        PCF_o <= pc_start;
+    end else if (MisspredictE_o) begin
+        PCF_o <= PCE;
+    end else if (PCEnable) begin
+        PCF_o <= PCnewF;
+    end
 end
+
 assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
 
 // ***** DECODE STAGE ********************************
