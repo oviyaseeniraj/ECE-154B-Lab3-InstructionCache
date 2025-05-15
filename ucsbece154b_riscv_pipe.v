@@ -4,7 +4,6 @@
 // Copyright (c) 2024 UCSB ECE
 // Distribution Prohibited
 
-
 module ucsbece154b_riscv_pipe (
     input               clk, reset,
     output wire  [31:0] PCF_o,
@@ -13,34 +12,45 @@ module ucsbece154b_riscv_pipe (
     output wire  [31:0] ALUResultM_o,
     output wire  [31:0] WriteDataM_o,
     input        [31:0] ReadDataM_i,
-    input  ReadyF, //added Ready instruction to stall fetch stage in case of cache miss
-    output wire ReadEnable_o,
-    output wire [31:0] PCNewF, // NEW: feeds icache ReadAddress
-    input Busy,
-    input MemDataReady,
-    output PCEnable,
-    output Mispredict
+    input               ReadyF,
+    output wire         ReadEnable_o,
+    output wire [31:0]  PCNewF,
+    input               Busy,
+    input               MemDataReady,
+    output              PCEnable,
+    output              Mispredict
 );
 
-wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
+wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE;
 wire [6:0] op;
 wire [2:0] funct3;
-wire funct7b5;
+wire       funct7b5;
 wire [2:0] ImmSrcD;
 wire [2:0] ALUControlE;
 wire [1:0] ForwardAE, ForwardBE, ResultSrcW, ResultSrcM;
 wire [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW;
-wire BranchE, JumpE, BranchTypeE;
-reg ReadEnable_r;
-always @(posedge clk or posedge reset) begin
-    if (reset || Mispredict)
-        ReadEnable_r <= 1'b1;
-    else if (ReadyF)
-        ReadEnable_r <= 1'b0;
-end
-assign ReadEnable_o = ReadEnable_r || ~StallF;
+wire       BranchE, JumpE, BranchTypeE;
 
-assign ReadEnable_o = ~StallF;
+// NEW: Persistent ReadEnable during mispredict recovery
+reg ReadEnable_r; // NEW
+reg was_mispredict; // NEW
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        ReadEnable_r <= 1'b1; // NEW
+        was_mispredict <= 0; // NEW
+    end else begin
+        if (Mispredict) begin
+            ReadEnable_r <= 1'b1; // NEW
+            was_mispredict <= 1; // NEW
+        end else if (ReadyF && was_mispredict) begin
+            ReadEnable_r <= 1'b0; // NEW
+            was_mispredict <= 0; // NEW
+        end
+    end
+end
+
+assign ReadEnable_o = ReadEnable_r || ~StallF; // NEW
 
 ucsbece154b_controller c (
     .clk(clk), .reset(reset),
