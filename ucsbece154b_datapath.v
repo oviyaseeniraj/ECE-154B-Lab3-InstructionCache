@@ -69,8 +69,9 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
 reg MisspredictM;
+reg [31:0] PCE;
 
-assign PCEnable = (ReadyF_i) && ~Busy_i && ~MemDataReady_i;
+assign PCEnable = (ReadyF_i || MisspredictE_o) && ~Busy_i && ~MemDataReady_i;
 
 wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
 wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;
@@ -146,7 +147,7 @@ end
 
 
 // ***** EXECUTE STAGE ******************************
-reg [31:0] RD1E, RD2E, PCPlus4E, ExtImmE, PCE; 
+reg [31:0] RD1E, RD2E, PCPlus4E, ExtImmE; 
 reg [31:0] ForwardDataM;
 //reg [`GL_NUM_GHR_BITS-1:0] PHTindexE;
 reg [$clog2(`GL_NUM_PHT_ENTRIES)-1:0] PHTindexE;
@@ -158,6 +159,7 @@ always @ * begin
        forward_mem: SrcAE = ALUResultM_o; 
         forward_wb: SrcAE = ResultW;
         forward_ex: SrcAE = RD1E;
+             2'b11: SrcAE = SrcAE;
        default: SrcAE = 32'bx;
     endcase
 end
@@ -169,6 +171,7 @@ always @ * begin
        forward_mem: WriteDataE = ForwardDataM; 
         forward_wb: WriteDataE = ResultW;
         forward_ex: WriteDataE = RD2E;
+    	     2'b11: WriteDataE = WriteDataE;
        default: WriteDataE = 32'bx;
     endcase
 end

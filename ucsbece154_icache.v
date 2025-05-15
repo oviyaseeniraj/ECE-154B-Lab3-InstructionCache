@@ -3,8 +3,7 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 0,
-    parameter PREFETCH   = 0
+    parameter ADVANCED   = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -21,7 +20,8 @@ module ucsbece154_icache #(
     output reg                MemReadRequest,
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
-    input                     PCEnable
+    input                     Misprediction,
+    output reg		      imem_reset
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -87,10 +87,11 @@ always @ (posedge Clk) begin
     end else begin
         // Default values
         Ready <= 0;
-        hit_this_cycle <= 0;
+	imem_reset <= 0;
+	hit_this_cycle = 0;
 
         // --- HIT DETECTION LOGIC ---
-        if (ReadEnable && !Busy && !need_to_write) begin
+        if (Misprediction || (ReadEnable && !Busy && !need_to_write)) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_this_cycle = 1;
@@ -114,15 +115,26 @@ always @ (posedge Clk) begin
         */
 
         if (hit_this_cycle) begin
+            if (Misprediction) begin
+                MemReadRequest <= 0;
+                MemReadAddress <= 0;
+                need_to_write <= 0;
+                imem_reset <= 1;
+                Busy <= 0;
+            end
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+	        Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
         end
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
-        if (!hit_this_cycle && ReadEnable && !Busy && !need_to_write) begin
+        if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
+            if (Misprediction) begin
+                imem_reset <= 1;
+                Busy <= 0;
+            end
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
             MemReadAddress <= {ReadAddress[31:OFFSET], {OFFSET{1'b0}}}; // align to block
@@ -141,7 +153,7 @@ always @ (posedge Clk) begin
         end
 
         if (MemDataReady && need_to_write) begin
-            Busy <= 1;
+            Busy = 1;
             sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == 0 && ADVANCED) begin
@@ -157,11 +169,10 @@ always @ (posedge Clk) begin
                 end
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
-                
-                if (!ADVANCED) begin
+
+                if (MemReadAddress < 32'h00010060 && !ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
                 end
-
                 Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;

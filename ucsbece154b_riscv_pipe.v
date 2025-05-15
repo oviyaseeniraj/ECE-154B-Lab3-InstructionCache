@@ -18,7 +18,7 @@ module ucsbece154b_riscv_pipe (
     output wire [31:0] PCNewF, // NEW: feeds icache ReadAddress
     input Busy,
     input MemDataReady,
-    output PCEnable
+    output Misprediction
 );
 
 wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
@@ -31,6 +31,7 @@ wire [1:0] ForwardAE, ForwardBE, ResultSrcW, ResultSrcM;
 wire [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW;
 wire BranchE, JumpE, BranchTypeE, MisspredictE;
 assign ReadEnable_o = ~StallF;
+assign Misprediction = MisspredictE;
 
 ucsbece154b_controller c (
     .clk(clk), .reset(reset),
@@ -104,7 +105,6 @@ ucsbece154b_datapath dp (
     .PCNewF_o(PCNewF), // NEW: feeds icache ReadAddress
     .Busy_i(Busy),
     .MemDataReady_i(MemDataReady),
-    .ReadyF_i(ReadyF),
-    .PCEnable(PCEnable)
+    .ReadyF_i(ReadyF)
 );
 endmodule

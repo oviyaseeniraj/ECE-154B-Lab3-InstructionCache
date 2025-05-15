@@ -1,11 +1,10 @@
-    `define MIN(A,B) (((A)<(B))?(A):(B))
+`define MIN(A,B) (((A)<(B))?(A):(B))
 
 module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
     parameter BLOCK_WORDS = 4,
     parameter T0_DELAY = 40,
-    parameter ADVANCED = 0,
-    parameter PREFETCH = 0
+    parameter ADVANCED = 0
 ) (
     input wire clk,
     input wire reset,
@@ -14,7 +13,8 @@ module ucsbece154_imem #(
     input wire [31:0] ReadAddress,
 
     output reg [31:0] DataIn,
-    output reg DataReady
+    output reg DataReady,
+    input imem_reset
 );
 
 // BRAM
@@ -41,11 +41,10 @@ wire [31:0] text_data = TEXT[text_address];
 
 wire [TEXT_ADDRESS_WIDTH-1:0] critical_address = ReadAddress[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
 wire [31:0] critical_data = TEXT[critical_address];
-
 wire [1:0] critical_offset = ReadAddress[3:2];
 
-always @(posedge clk or posedge reset) begin
-    if (reset) begin
+always @(posedge clk or posedge reset or posedge imem_reset) begin
+    if (reset || imem_reset) begin
         DataIn <= 0;
         DataReady <= 0;
         reading <= 0;
@@ -59,7 +58,6 @@ always @(posedge clk or posedge reset) begin
             base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
             delay_counter <= T0_DELAY;
             word_counter <= 0;
-            offset <= 0;
             reading <= 1;
         end
 
@@ -72,7 +70,6 @@ always @(posedge clk or posedge reset) begin
                     DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
-                    offset <= offset + 1;
                     // delay_counter <= T0_DELAY;
                 end else begin
                     reading <= 0;
@@ -104,6 +101,7 @@ always @(posedge clk or posedge reset) begin
                 end
             end
         end
+        
     end
 end
 

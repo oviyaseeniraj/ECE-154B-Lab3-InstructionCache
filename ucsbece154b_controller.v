@@ -47,7 +47,7 @@ module ucsbece154b_controller (
 
 // ***** DECODE STAGE **************************************
  wire RegWriteD, MemWriteD, JumpD, BranchD, ALUSrcD;
- reg BranchTypeD;
+ reg BranchTypeD, Ready_D;
  wire [1:0] ResultSrcD; 
  reg [2:0] ALUControlD;
  
@@ -126,9 +126,13 @@ module ucsbece154b_controller (
    endcase
  end
 
+always @ (posedge clk) begin
+    Ready_D <= Ready_F;
+end
+
 
 // ****** EXECUTE STAGE ****************************************
- reg RegWriteE, MemWriteE;
+ reg RegWriteE, MemWriteE, Ready_E;
  // reg BranchTypeE;
  reg [1:0] ResultSrcE;
 
@@ -154,9 +158,9 @@ module ucsbece154b_controller (
        ALUControlE_o <= ALUControlD;
        ALUSrcE_o     <= ALUSrcD; 
        BranchTypeE_o <= BranchTypeD;
+       Ready_E 	     <= Ready_D;
     end
  end 
-
 // ***** MEMORY STAGE ******************************************
  reg RegWriteM;
 
@@ -192,7 +196,9 @@ module ucsbece154b_controller (
 
 // Forwarding logic
  always @ * begin
-  if      ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
+  if (!Ready_E)
+	 ForwardAE_o = 2'b11;
+  else if ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_mem;
   else if ( (Rs1E_i == RdW_i) & RegWriteW_o & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_wb;
@@ -200,7 +206,9 @@ module ucsbece154b_controller (
  end
   
  always @ * begin
-  if      ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
+  if (!Ready_E)
+	 ForwardBE_o = 2'b11;
+  else if ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_mem;
   else if ( (Rs2E_i == RdW_i) & RegWriteW_o & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_wb;
@@ -208,10 +216,10 @@ module ucsbece154b_controller (
  end
 
 // Stall logic
- wire lwStall; 
+ wire lwStall;
 
  assign lwStall = (ResultSrcE == 1) & ( (Rs1D_i == RdE_i) | (Rs2D_i == RdE_i) ) & (RdE_i != 0);
-reg firedOnce;
+ reg firedOnce;
 
 always @(posedge clk) begin
   if (reset)
