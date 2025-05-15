@@ -139,15 +139,15 @@ always @ (posedge Clk) begin
             need_to_write = 1;
         end
 
-        if (Mispredict && need_to_write) begin
-                $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
-                Busy <= 0;
-                MemReadRequest <= 0;
-                need_to_write <= 0;
-                word_counter <= 0;
-                lastReadAddress <= 0;
-                for (k = 0; k < BLOCK_WORDS; k = k + 1)
-                    sdram_block[k] <= 32'b0;
+        if (Mispredict && MemReadRequest && need_to_write && word_counter > 0) begin
+            $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
+            Busy <= 0;
+            MemReadRequest <= 0;
+            need_to_write <= 0;
+            word_counter <= 0;
+            lastReadAddress <= 0;
+            for (k = 0; k < BLOCK_WORDS; k = k + 1)
+                sdram_block[k] <= 32'b0;
         end else if (MemDataReady && need_to_write) begin
             Busy = 1;
             sdram_block[word_counter] = MemDataIn;
