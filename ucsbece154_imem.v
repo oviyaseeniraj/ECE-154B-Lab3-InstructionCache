@@ -3,8 +3,7 @@
 module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
     parameter BLOCK_WORDS = 4,
-    parameter T0_DELAY = 40,
-    parameter ADVANCED = 0
+    parameter T0_DELAY = 40
 ) (
     input wire clk,
     input wire reset,
@@ -33,15 +32,10 @@ reg [$clog2(BLOCK_WORDS):0] word_counter;
 reg reading;
 
 // Computed access address
-reg [$clog2(BLOCK_WORDS):0] offset;
-wire [31:0] a_i = base_addr + (offset << 2);
+wire [31:0] a_i = base_addr + (word_counter << 2);
 wire text_enable = (a_i >= TEXT_START) && (a_i < TEXT_END);
 wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
 wire [31:0] text_data = TEXT[text_address];
-
-wire [TEXT_ADDRESS_WIDTH-1:0] critical_address = ReadAddress[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
-wire [31:0] critical_data = TEXT[critical_address];
-wire [1:0] critical_offset = ReadAddress[3:2];
 
 always @(posedge clk or posedge reset or posedge imem_reset) begin
     if (reset || imem_reset) begin
@@ -62,7 +56,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
         end
 
         // Handle active burst
-        if (reading && !ADVANCED) begin
+        if (reading) begin
             if (delay_counter > 0) begin
                 delay_counter <= delay_counter - 1;
             end else begin
@@ -76,32 +70,6 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
                 end
             end
         end
-
-        if (reading && ADVANCED) begin
-            if (delay_counter > 0) begin
-                delay_counter <= delay_counter - 1;
-            end else begin
-                if (word_counter == 0) begin
-                    // case where we need to forward critical word first
-                    DataIn <= text_enable ? critical_data : 32'hZZZZZZZZ;
-                    DataReady <= 1;
-                    word_counter <= word_counter + 1;
-                end else if (word_counter < BLOCK_WORDS) begin
-                    // forwarding leftover words in block
-                    if (offset == critical_offset) begin
-                        offset = offset + 1;
-                    end
-                    DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
-                    DataReady <= 1;
-                    word_counter <= word_counter + 1;
-                    offset <= offset + 1;
-                end else begin
-                    // done writing
-                    reading <= 0;
-                end
-            end
-        end
-        
     end
 end
 
