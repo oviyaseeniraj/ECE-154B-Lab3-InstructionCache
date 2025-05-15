@@ -209,11 +209,10 @@ module ucsbece154b_controller (
 
 reg firedOnce; // used to track if the pipeline has been fired once
 always @(posedge clk) begin
-    if(reset) begin 
-       firedOnce <= 1'b0;
-    end else if (Ready_F) begin
-       firedOnce <= 1'b1;
-    end
+    if(reset) 
+       firedOnce <= 0;
+    end else
+       firedOnce <= 1;
 end
 // Stall logic
  wire lwStall; 
