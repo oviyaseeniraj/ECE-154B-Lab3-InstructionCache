@@ -2,7 +2,9 @@ module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
-    parameter WORD_SIZE  = 32
+    parameter WORD_SIZE  = 32,
+    parameter ADVANCED   = 0,
+    parameter PREFETCH   = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -140,6 +142,10 @@ always @ (posedge Clk) begin
 
         if (MemDataReady && need_to_write) begin
             Busy = 1;
+            if (word_counter == 0 && ADVANCED) begin
+                Instruction <= sdram_block[refill_word_offset];
+            end
+
             sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
@@ -150,8 +156,11 @@ always @ (posedge Clk) begin
                 end
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
+                
+                if (!ADVANCED) begin
+                    Instruction <= sdram_block[refill_word_offset];
+                end
 
-                Instruction <= sdram_block[refill_word_offset];
                 Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
