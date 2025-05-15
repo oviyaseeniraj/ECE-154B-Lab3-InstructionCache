@@ -19,7 +19,8 @@ module ucsbece154_icache #(
     output reg                MemReadRequest,
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
-    input                     PCEnable
+    input                     PCEnable,
+    input                     Mispredict
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -97,24 +98,10 @@ always @ (posedge Clk) begin
             end
         end
 
-        /**
-        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
-        if (hit_this_cycle) begin
-            $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddr, set_index, hit_way, ReadAddr[OFFSET-1:WORD_OFFSET]);
-            hit_latched <= 1;
-            latched_hit_way <= hit_way;
-            latchedReadAddress <= ReadAddr; // NEW
-            latched_set_index <= set_index;
-        end else begin
-            hit_latched <= 0;
-        end
-        */
-
         if (hit_this_cycle) begin
             // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
-            $display("instr at pc %h is %h", ReadAddress, Instruction);
+	        Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+            //$display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
         end
@@ -139,27 +126,45 @@ always @ (posedge Clk) begin
         end
 
         if (MemDataReady && need_to_write) begin
-            Busy = 1;
-            sdram_block[word_counter] = MemDataIn;
-
-            if (word_counter == BLOCK_WORDS - 1) begin
-                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
-                for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-                    words[refill_set_index][replace_way][k] <= sdram_block[k];
-                    $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
-                end
-                tags[refill_set_index][replace_way] <= refill_tag_index;
-                valid[refill_set_index][replace_way] <= 1;
-
-                Instruction <= sdram_block[refill_word_offset];
-                Ready <= 1;
+            // NEW: If mispredict, cancel this refill early
+            if (Mispredict) begin
+                $display("MISPREDICT during refill at time %0t — discarding current refill", $time);
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
-            end
+                word_counter <= 0;
+            end else begin
+                Busy = 1;
+                sdram_block[word_counter] = MemDataIn;
 
-            word_counter <= word_counter + 1;
+                if (word_counter == BLOCK_WORDS - 1) begin
+                    $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, lastReadAddress, refill_set_index, replace_way);
+                    for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                        words[refill_set_index][replace_way][k] <= sdram_block[k];
+                        $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
+                    end
+                    tags[refill_set_index][replace_way] <= refill_tag_index;
+                    valid[refill_set_index][replace_way] <= 1;
+
+                    Instruction <= sdram_block[refill_word_offset];
+                    Ready <= 1;
+                    Busy <= 0;
+                    MemReadRequest <= 0;
+                    need_to_write <= 0;
+                end
+
+                word_counter <= word_counter + 1;
+            end
         end
+
+    end
+end
+
+always @(*) begin
+    if (Mispredict) begin
+        latchedReadAddress = ReadAddress;
+    end else if (PCEnable) begin
+        latchedReadAddress = ReadAddress;
     end
 end
 
