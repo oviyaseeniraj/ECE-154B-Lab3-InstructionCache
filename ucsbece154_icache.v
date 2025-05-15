@@ -3,7 +3,7 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 0
+    parameter ADVANCED   = 1
 )(
     input                     Clk,
     input                     Reset,
@@ -58,8 +58,7 @@ reg [1:0] offset;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
-// NEW: Latch the read address for stable word_offset usage
-reg [31:0] latchedReadAddress; // NEW
+reg [31:0] latchedReadAddress;
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -75,7 +74,7 @@ always @ (posedge Clk) begin
         hit_latched <= 0;
         latched_hit_way <= 0;
         hit_this_cycle <= 0;
-        latchedReadAddress <= 0; // NEW
+        latchedReadAddress <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -102,20 +101,6 @@ always @ (posedge Clk) begin
             end
         end
 
-        /**
-        // --- LATCH HIT FOR NEXT CYCLE OUTPUT ---
-        if (hit_this_cycle) begin
-            $display("hit at time %0t, read_address=%h, set_index=%0b, hit_way=%0b, word_offset=%0b", 
-                $time, ReadAddr, set_index, hit_way, ReadAddr[OFFSET-1:WORD_OFFSET]);
-            hit_latched <= 1;
-            latched_hit_way <= hit_way;
-            latchedReadAddress <= ReadAddr; // NEW
-            latched_set_index <= set_index;
-        end else begin
-            hit_latched <= 0;
-        end
-        */
-
         if (hit_this_cycle) begin
 	    if (Misprediction) begin
 		MemReadRequest <= 0;
@@ -124,8 +109,7 @@ always @ (posedge Clk) begin
 		imem_reset <= 1;
 		Busy <= 0;
 	    end
-            // Instruction <= words[set_index][latched_hit_way][word_offset]; // OLD
-	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]]; // NEW
+	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;

@@ -73,7 +73,6 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
                     offset <= offset + 1;
-                    // delay_counter <= T0_DELAY;
                 end else begin
                     reading <= 0;
                 end
@@ -95,7 +94,6 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
                     DataReady <= 1;
                     word_counter <= word_counter + 1;
                     offset <= offset + 1;
-                    // delay_counter <= T0_DELAY;
                 end else begin
                     reading <= 0;
                 end
