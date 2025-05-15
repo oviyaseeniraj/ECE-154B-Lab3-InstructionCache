@@ -89,7 +89,7 @@ always @ (posedge Clk) begin
         hit_this_cycle <= 0;
 
         // --- HIT DETECTION LOGIC ---
-        if (ReadEnable && !Busy && !need_to_write) begin
+        if (ReadEnable && !Mispredict && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_this_cycle = 1;
