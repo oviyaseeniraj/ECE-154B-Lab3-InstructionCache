@@ -1,3 +1,6 @@
+// ucsbece154_icache.v
+// FIXED: critical-word-first + early-restart support for ADVANCED mode
+
 module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
@@ -21,7 +24,7 @@ module ucsbece154_icache #(
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
     input                     Misprediction,
-    output reg		      imem_reset
+    output reg                imem_reset
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -47,18 +50,13 @@ wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_O
 
 integer i, j, k;
 reg [$clog2(NUM_WAYS)-1:0] hit_way;
-reg [$clog2(NUM_WAYS)-1:0] latched_hit_way;
-reg [$clog2(NUM_SETS)-1:0] latched_set_index;
-reg hit_latched;
 reg hit_this_cycle;
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
-reg [1:0] offset;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 reg early_restart;
-reg [31:0] latchedReadAddress;
 
 always @ (posedge Clk) begin
     if (Reset) begin
@@ -68,119 +66,92 @@ always @ (posedge Clk) begin
         MemReadAddress <= 0;
         MemReadRequest <= 0;
         word_counter <= 0;
-        offset <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
-        hit_latched <= 0;
-        latched_hit_way <= 0;
-        hit_this_cycle <= 0;
-        latchedReadAddress <= 0;
         early_restart <= 0;
+        imem_reset <= 0;
 
-        for (i = 0; i < NUM_SETS; i = i + 1) begin
+        for (i = 0; i < NUM_SETS; i = i + 1)
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 valid[i][j] <= 0;
                 tags[i][j] <= 0;
-                for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                for (k = 0; k < BLOCK_WORDS; k = k + 1)
                     words[i][j][k] <= 0;
-                end
             end
-        end
     end else begin
-        // Default values
         Ready <= 0;
         imem_reset <= 0;
         hit_this_cycle = 0;
 
-        // --- HIT DETECTION LOGIC ---
+        // HIT DETECTION
         if (Misprediction || (ReadEnable && !Busy && !need_to_write)) begin
-            for (i = 0; i < NUM_WAYS; i = i + 1) begin
+            for (i = 0; i < NUM_WAYS; i = i + 1)
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
                     hit_this_cycle = 1;
                     hit_way = i;
                 end
-            end
         end
 
         if (hit_this_cycle) begin
-	    if (Misprediction) begin
-		MemReadRequest <= 0;
-		MemReadAddress <= 0;
-		need_to_write <= 0;
-		imem_reset <= 1;
-		Busy <= 0;
-	    end
-	    Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
-            $display("instr at pc %h is %h", ReadAddress, Instruction);
+            if (Misprediction) begin
+                MemReadRequest <= 0;
+                MemReadAddress <= 0;
+                need_to_write <= 0;
+                imem_reset <= 1;
+                Busy <= 0;
+            end
+            Instruction <= words[set_index][hit_way][word_offset];
             Ready <= 1;
             Busy <= 0;
         end
 
-        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
+        // MISS HANDLING
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-	    if (Misprediction) begin
-		imem_reset <= 1;
-		Busy <= 0;
-	    end
-            $display("miss at time %0t, read_address=%h", $time, ReadAddress);
+            if (Misprediction) begin
+                imem_reset <= 1;
+                Busy <= 0;
+            end
             lastReadAddress <= ReadAddress;
-            MemReadAddress <= ReadAddress; // align to block
+            MemReadAddress <= ReadAddress;
             MemReadRequest <= 1;
 
-            // Choose replacement or empty way
             replace_way <= 0;
-            for (j = 0; j < NUM_WAYS; j = j + 1) begin
-                if (!valid[set_index][j]) begin
-                    replace_way <= j;
-                end
-            end
+            for (j = 0; j < NUM_WAYS; j = j + 1)
+                if (!valid[set_index][j]) replace_way <= j;
 
             word_counter <= 0;
-            offset <= 0;
-            need_to_write = 1;
+            need_to_write <= 1;
         end
 
+        // SDRAM WRITE + EARLY RESTART
         if (MemDataReady && need_to_write) begin
-            Busy = 1;
-            
-            if (ADVANCED) begin
-                if (word_counter == 0) begin
-                    sdram_block[refill_word_offset] <= MemDataIn;
-                    early_restart <= 1;
-                end else begin
-                    if (offset == refill_word_offset) begin
-                        offset = offset + 1;
-                    end
-                    sdram_block[offset] <= MemDataIn;
-                end
-            end else begin
-                sdram_block[word_counter] = MemDataIn;
+            Busy <= 1;
+
+            // --- FIX: Write all words sequentially ---
+            sdram_block[word_counter] <= MemDataIn; // FIXED
+            if (ADVANCED && word_counter == 0) begin
+                Instruction <= MemDataIn;
+                Ready <= 1;
             end
 
+            word_counter <= word_counter + 1;
+
             if (word_counter == BLOCK_WORDS - 1) begin
-                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
-                for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                for (k = 0; k < BLOCK_WORDS; k = k + 1)
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
-                    $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
-                end
+
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-                if (MemReadAddress < 32'h00010060 && !ADVANCED) begin
+                if (!ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
+                    Ready <= 1;
                 end
-                Ready <= 1;
+
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
             end
-            word_counter <= word_counter + 1;
-            offset <= offset + 1;
-        end
-        if (early_restart) begin
-            Instruction <= sdram_block[refill_word_offset];
-            Ready <= 1;
-            early_restart <= 0;
         end
     end
 end
