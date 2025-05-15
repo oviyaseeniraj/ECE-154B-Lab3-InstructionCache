@@ -142,11 +142,11 @@ always @ (posedge Clk) begin
 
         if (MemDataReady && need_to_write) begin
             Busy = 1;
+            sdram_block[word_counter] = MemDataIn;
+
             if (word_counter == 0 && ADVANCED) begin
                 Instruction <= sdram_block[refill_word_offset];
             end
-
-            sdram_block[word_counter] = MemDataIn;
 
             if (word_counter == BLOCK_WORDS - 1) begin
                 $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
