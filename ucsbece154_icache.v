@@ -151,7 +151,7 @@ always @ (posedge Clk) begin
                     if (offset == refill_word_offset) begin
                         offset = offset + 1;
                     end
-                    sdram_block[offset] <= MemDataIn;
+                    sdram_block[offset] = MemDataIn;
                 end
             end else begin
                 sdram_block[word_counter] = MemDataIn;
