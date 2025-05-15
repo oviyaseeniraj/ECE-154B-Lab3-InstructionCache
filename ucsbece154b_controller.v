@@ -211,8 +211,16 @@ module ucsbece154b_controller (
  wire lwStall; 
 
  assign lwStall = (ResultSrcE == 1) & ( (Rs1D_i == RdE_i) | (Rs2D_i == RdE_i) ) & (RdE_i != 0);
+reg firedOnce;
 
- assign StallF_o = lwStall || ~Ready_F; // added Ready instruction to stall fetch stage in case of cache miss
+always @(posedge clk) begin
+  if (reset)
+    firedOnce <= 0;
+  else
+    firedOnce <= 1;
+end
+
+ assign StallF_o = lwStall || (~Ready_F && firedOnce);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
