@@ -1,9 +1,5 @@
 // ucsbece154b_top.v
-// ECE 154B, RISC-V pipelined processor 
-// All Rights Reserved
-// Copyright (c) 2024 UCSB ECE
-// Distribution Prohibited
-
+// NEW: Baseline instruction cache and memory wiring
 
 module ucsbece154b_top (
     input clk, reset
@@ -33,9 +29,8 @@ ucsbece154_icache icache (
     .PCEnable(PCenable)
 );
 
-
-// processor and memories are instantiated here
-ucsbece154b_riscv_pipe riscv (
+// Datapath
+ucsbece154b_datapath datapath (
     .clk(clk), .reset(reset),
     .PCF_o(pc),
     .InstrF_i(instr),
@@ -50,19 +45,14 @@ ucsbece154b_riscv_pipe riscv (
     .Busy(busy),
     .PCEnable(PCenable)
 );
-ucsbece154_imem imem (
-    .clk(clk),
-    .reset(reset),
 
-    .ReadRequest(SDRAM_ReadRequest),
-    .ReadAddress(SDRAM_ReadAddress),
-    .DataIn(SDRAM_DataIn),
-    .DataReady(SDRAM_DataReady)
-);
-ucsbece154_dmem dmem (
-    .clk(clk), .we_i(memwrite),
-    .a_i(dataadr), .wd_i(writedata),
-    .rd_o(readdata)
+// Emulated SDRAM (main memory)
+ucsbece154_imem imem (
+    .clk(clk), .reset(reset),
+    .ReadRequest(MemReadRequest),
+    .ReadAddress(MemReadAddress),
+    .DataIn(MemDataIn),
+    .DataReady(MemDataReady)
 );
 
 endmodule
