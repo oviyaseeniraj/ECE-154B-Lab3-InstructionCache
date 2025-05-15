@@ -142,6 +142,7 @@ always @ (posedge Clk) begin
         if (Mispredict && MemReadRequest && need_to_write) begin
             $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
             Busy <= 0;
+            Ready <= 1;
             MemReadRequest <= 0;
             need_to_write <= 0;
             word_counter <= 0;
