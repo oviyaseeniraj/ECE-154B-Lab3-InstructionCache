@@ -1,3 +1,5 @@
+// ucsbece154_icache.v - Final Patched Version
+
 module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
@@ -28,17 +30,14 @@ localparam BLOCK_OFFSET  = $clog2(BLOCK_WORDS);
 localparam OFFSET        = WORD_OFFSET + BLOCK_OFFSET;
 localparam NUM_TAG_BITS  = 32 - $clog2(NUM_SETS) - OFFSET;
 
-// Cache structures
 reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg                   valid     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 
-// Indices
 wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
 
-// Refills use this stored address
 reg [31:0] lastReadAddress;
 wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
@@ -51,8 +50,6 @@ reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
-
-// NEW: Latch read address to detect address changes
 reg [31:0] current_req; // NEW
 
 always @ (posedge Clk) begin
@@ -65,7 +62,7 @@ always @ (posedge Clk) begin
         word_counter <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
-        current_req <= 0; // NEW
+        current_req <= 32'hFFFFFFFF; // NEW: reset value
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -80,7 +77,6 @@ always @ (posedge Clk) begin
         Ready <= 0;
         hit_this_cycle <= 0;
 
-        // --- HIT DETECTION LOGIC ---
         if (ReadEnable && !Mispredict && !Busy && !need_to_write) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
@@ -97,8 +93,7 @@ always @ (posedge Clk) begin
             Busy <= 0;
         end
 
-        // --- ENTER REFILL ON CONFIRMED MISS + DETECT ADDRESS CHANGE ---
-        if (!hit_this_cycle && ReadEnable && (ReadAddress != current_req) && !Busy && !need_to_write) begin // NEW
+        if (!hit_this_cycle && ReadEnable && (ReadAddress != current_req) && !Busy && !need_to_write) begin
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             current_req <= ReadAddress; // NEW
             lastReadAddress <= ReadAddress;
@@ -116,7 +111,10 @@ always @ (posedge Clk) begin
             need_to_write <= 1;
         end
 
-        // --- CANCEL BURST ON MISPREDICT ---
+        if (Mispredict) begin // NEW
+            current_req <= 32'hFFFFFFFF; // force refetch after mispredict
+        end
+
         if (Mispredict && MemReadRequest && need_to_write) begin
             $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
             Busy <= 0;
@@ -124,7 +122,6 @@ always @ (posedge Clk) begin
             need_to_write <= 0;
             word_counter <= 0;
             lastReadAddress <= 0;
-            current_req <= 0; // NEW
             for (k = 0; k < BLOCK_WORDS; k = k + 1)
                 sdram_block[k] <= 32'b0;
         end else if (MemDataReady && need_to_write) begin
