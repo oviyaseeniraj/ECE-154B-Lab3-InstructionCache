@@ -84,7 +84,6 @@ always @ (posedge clk) begin
     if (reset)        PCF_o <= pc_start;
     // else if (!StallF_i) PCF_o <= PCnewF;
     else if (PCEnable) PCF_o <= PCnewF;
-    else if (JumpE_i) PCF_o <= PCE;
 end
 assign PCNewF_o = PCnewF; // NEW: expose speculative PC to top-level
 
@@ -160,6 +159,7 @@ always @ * begin
        forward_mem: SrcAE = ALUResultM_o; 
         forward_wb: SrcAE = ResultW;
         forward_ex: SrcAE = RD1E;
+             2'b11: SrcAE = SrcAE;
        default: SrcAE = 32'bx;
     endcase
 end
@@ -171,6 +171,7 @@ always @ * begin
        forward_mem: WriteDataE = ForwardDataM; 
         forward_wb: WriteDataE = ResultW;
         forward_ex: WriteDataE = RD2E;
+    	     2'b11: WriteDataE = WriteDataE;
        default: WriteDataE = 32'bx;
     endcase
 end

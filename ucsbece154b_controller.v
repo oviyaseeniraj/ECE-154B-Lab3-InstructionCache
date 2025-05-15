@@ -196,9 +196,9 @@ end
 
 // Forwarding logic
  always @ * begin
-  /**if (!Ready_E)
-	 ForwardAE_o = forward_ex;
-  else*/ if ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
+  if (!Ready_E)
+	 ForwardAE_o = 2'b11;
+  else if ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_mem;
   else if ( (Rs1E_i == RdW_i) & RegWriteW_o & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_wb;
@@ -206,9 +206,9 @@ end
  end
   
  always @ * begin
-  /**if (!Ready_E)
-	 ForwardBE_o = forward_ex; 
-  else*/ if ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
+  if (!Ready_E)
+	 ForwardBE_o = 2'b11;
+  else if ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_mem;
   else if ( (Rs2E_i == RdW_i) & RegWriteW_o & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_wb;
@@ -219,7 +219,7 @@ end
  wire lwStall;
 
  assign lwStall = (ResultSrcE == 1) & ( (Rs1D_i == RdE_i) | (Rs2D_i == RdE_i) ) & (RdE_i != 0);
-reg firedOnce;
+ reg firedOnce;
 
 always @(posedge clk) begin
   if (reset)

@@ -12,7 +12,8 @@ module ucsbece154_imem #(
     input wire [31:0] ReadAddress,
 
     output reg [31:0] DataIn,
-    output reg DataReady
+    output reg DataReady,
+    input imem_reset
 );
 
 // BRAM
@@ -36,8 +37,8 @@ wire text_enable = (a_i >= TEXT_START) && (a_i < TEXT_END);
 wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
 wire [31:0] text_data = TEXT[text_address];
 
-always @(posedge clk or posedge reset) begin
-    if (reset) begin
+always @(posedge clk or posedge reset or posedge imem_reset) begin
+    if (reset || imem_reset) begin
         DataIn <= 0;
         DataReady <= 0;
         reading <= 0;
