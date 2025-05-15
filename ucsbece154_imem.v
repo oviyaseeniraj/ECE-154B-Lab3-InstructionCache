@@ -1,159 +1,115 @@
-// ucsbece154_icache.v
-// FIXED: critical-word-first + early-restart support for ADVANCED mode
+`define MIN(A,B) (((A)<(B))?(A):(B))
 
-module ucsbece154_icache #(
-    parameter NUM_SETS   = 8,
-    parameter NUM_WAYS   = 4,
-    parameter BLOCK_WORDS= 4,
-    parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 1
-)(
-    input                     Clk,
-    input                     Reset,
+module ucsbece154_imem #(
+    parameter TEXT_SIZE = 64,
+    parameter BLOCK_WORDS = 4,
+    parameter T0_DELAY = 40,
+    parameter ADVANCED = 1
+) (
+    input wire clk,
+    input wire reset,
 
-    // core fetch interface
-    input                     ReadEnable,
-    input      [31:0]         ReadAddress,
-    output reg [WORD_SIZE-1:0]Instruction,
-    output reg                Ready,
-    output reg                Busy,
+    input wire ReadRequest,
+    input wire [31:0] ReadAddress,
 
-    // SDRAM-controller interface
-    output reg [31:0]         MemReadAddress,
-    output reg                MemReadRequest,
-    input      [31:0]         MemDataIn,
-    input                     MemDataReady,
-    input                     Misprediction,
-    output reg                imem_reset
+    output reg [31:0] DataIn,
+    output reg DataReady,
+    input imem_reset
 );
 
-localparam WORD_OFFSET   = $clog2(4);
-localparam BLOCK_OFFSET  = $clog2(BLOCK_WORDS);
-localparam OFFSET        = WORD_OFFSET + BLOCK_OFFSET;
-localparam NUM_TAG_BITS  = 32 - $clog2(NUM_SETS) - OFFSET;
+// BRAM
+reg [31:0] TEXT [0:TEXT_SIZE-1];
+initial $readmemh("text.dat", TEXT);
 
-// Cache structures
-reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
-reg                   valid     [0:NUM_SETS-1][0:NUM_WAYS-1];
-reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
+// Address layout
+localparam TEXT_START = 32'h00010000;
+localparam TEXT_END   = `MIN(TEXT_START + (TEXT_SIZE * 4), 32'h10000000);
+localparam TEXT_ADDRESS_WIDTH = $clog2(TEXT_SIZE);
 
-// Indices
-wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
-wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
+// Internal state
+reg [31:0] base_addr;
+reg [$clog2(T0_DELAY+1):0] delay_counter;
+reg [$clog2(BLOCK_WORDS):0] word_counter;
+reg [$clog2(BLOCK_WORDS):0] offset;
+reg reading;
 
-// Refills use this stored address
-reg [31:0] lastReadAddress;
-wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
-wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
-wire [BLOCK_OFFSET-1:0]     refill_word_offset = lastReadAddress[OFFSET-1:WORD_OFFSET];
+// Computed access address
+wire [31:0] a_i = base_addr + (offset << 2);
+wire text_enable = (a_i >= TEXT_START) && (a_i < TEXT_END);
+wire [TEXT_ADDRESS_WIDTH-1:0] text_address = a_i[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
+wire [31:0] text_data = TEXT[text_address];
 
-integer i, j, k;
-reg [$clog2(NUM_WAYS)-1:0] hit_way;
-reg hit_this_cycle;
+wire [TEXT_ADDRESS_WIDTH-1:0] critical_address = ReadAddress[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
+wire [31:0] critical_data = TEXT[critical_address];
+wire [1:0] critical_offset = ReadAddress[3:2];
 
-reg [$clog2(NUM_WAYS)-1:0] replace_way;
-reg [1:0] word_counter;
-reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
-reg need_to_write;
-reg early_restart;
-
-always @ (posedge Clk) begin
-    if (Reset) begin
-        Ready <= 0;
-        Instruction <= 0;
-        Busy <= 0;
-        MemReadAddress <= 0;
-        MemReadRequest <= 0;
+always @(posedge clk or posedge reset or posedge imem_reset) begin
+    if (reset || imem_reset) begin
+        DataIn <= 0;
+        DataReady <= 0;
+        reading <= 0;
+        delay_counter <= 0;
         word_counter <= 0;
-        need_to_write <= 0;
-        lastReadAddress <= 0;
-        early_restart <= 0;
-        imem_reset <= 0;
-
-        for (i = 0; i < NUM_SETS; i = i + 1)
-            for (j = 0; j < NUM_WAYS; j = j + 1) begin
-                valid[i][j] <= 0;
-                tags[i][j] <= 0;
-                for (k = 0; k < BLOCK_WORDS; k = k + 1)
-                    words[i][j][k] <= 0;
-            end
+        offset <= 0;
     end else begin
-        Ready <= 0;
-        imem_reset <= 0;
-        hit_this_cycle = 0;
+        DataReady <= 0; // default
 
-        // HIT DETECTION
-        if (Misprediction || (ReadEnable && !Busy && !need_to_write)) begin
-            for (i = 0; i < NUM_WAYS; i = i + 1)
-                if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
-                    hit_this_cycle = 1;
-                    hit_way = i;
-                end
-        end
-
-        if (hit_this_cycle) begin
-            if (Misprediction) begin
-                MemReadRequest <= 0;
-                MemReadAddress <= 0;
-                need_to_write <= 0;
-                imem_reset <= 1;
-                Busy <= 0;
-            end
-            Instruction <= words[set_index][hit_way][word_offset];
-            Ready <= 1;
-            Busy <= 0;
-        end
-
-        // MISS HANDLING
-        if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-            if (Misprediction) begin
-                imem_reset <= 1;
-                Busy <= 0;
-            end
-            lastReadAddress <= ReadAddress;
-            MemReadAddress <= ReadAddress;
-            MemReadRequest <= 1;
-
-            replace_way <= 0;
-            for (j = 0; j < NUM_WAYS; j = j + 1)
-                if (!valid[set_index][j]) replace_way <= j;
-
+        // Start a new burst
+        if (ReadRequest && !reading) begin
+            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
+            delay_counter <= T0_DELAY;
             word_counter <= 0;
-            need_to_write <= 1;
+            offset <= 0;
+            reading <= 1;
         end
 
-        // SDRAM WRITE + EARLY RESTART
-        if (MemDataReady && need_to_write) begin
-            Busy <= 1;
-
-            // --- FIX: Write all words sequentially ---
-            sdram_block[word_counter] <= MemDataIn; // FIXED
-            if (ADVANCED && word_counter == 0) begin
-                Instruction <= MemDataIn;
-                Ready <= 1;
-            end
-
-            word_counter <= word_counter + 1;
-
-            if (word_counter == BLOCK_WORDS - 1) begin
-                for (k = 0; k < BLOCK_WORDS; k = k + 1)
-                    words[refill_set_index][replace_way][k] <= sdram_block[k];
-
-                tags[refill_set_index][replace_way] <= refill_tag_index;
-                valid[refill_set_index][replace_way] <= 1;
-
-                if (!ADVANCED) begin
-                    Instruction <= sdram_block[refill_word_offset];
-                    Ready <= 1;
+        // Handle active burst
+        if (reading && ~ADVANCED) begin
+            if (delay_counter > 0) begin
+                delay_counter <= delay_counter - 1;
+            end else begin
+                if (word_counter < BLOCK_WORDS) begin
+                    DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
+                    DataReady <= 1;
+                    word_counter <= word_counter + 1;
+                    offset <= offset + 1;
+                end else begin
+                    reading <= 0;
                 end
-
-                Busy <= 0;
-                MemReadRequest <= 0;
-                need_to_write <= 0;
+            end
+        end else if (reading && ADVANCED) begin
+            if (delay_counter > 0) begin
+                delay_counter <= delay_counter -1;
+            end else begin
+                if (word_counter == 0) begin
+                    // OFFSET LOGIC
+                    DataIn <= text_enable ? critical_data : 32'hZZZZZZZZ;
+                    DataReady <= 1;
+                    word_counter <= word_counter + 1;
+                end else if (word_counter < BLOCK_WORDS) begin
+                    if (offset == critical_offset) begin
+                        offset <= offset + 1;
+                    end
+                    DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
+                    DataReady <= 1;
+                    word_counter <= word_counter + 1;
+                    offset <= offset + 1;
+                end else begin
+                    reading <= 0;
+                end
             end
         end
+
     end
 end
 
+`ifdef SIM
+always @* begin
+    if (a_i[1:0] != 2'b0)
+        $warning("Misaligned memory access: 0x%h", a_i);
+end
+`endif
+
 endmodule
+
+`undef MIN
