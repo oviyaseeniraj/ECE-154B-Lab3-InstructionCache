@@ -165,7 +165,7 @@ always @ (posedge Clk) begin
                     Ready <= 1;
                 end else begin
                     if (offset == refill_word_offset) begin
-                        offset = offset + 1;
+                        offset <= offset + 1;
                     end
                     sdram_block[offset] <= MemDataIn;
                 end
