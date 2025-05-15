@@ -38,7 +38,7 @@ ucsbece154_icache icache (
 // processor and memories are instantiated here
 ucsbece154b_riscv_pipe riscv (
     .clk(clk), .reset(reset),
-    .PCF_o(pcf),
+    .PCF_o(pc),
     .InstrF_i(instr),
     .MemWriteM_o(memwrite),
     .ALUResultM_o(dataadr), 
