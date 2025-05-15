@@ -51,7 +51,7 @@ ucsbece154b_riscv_pipe riscv (
     .MemDataReady(SDRAM_DataReady),
     .Busy(busy),
     .PCEnable(PCenable),
-    .Mispredict(Mispredict)
+    .Mispredict(Mispredict),
     .Flush(Flush)
 );
 ucsbece154_imem imem (
