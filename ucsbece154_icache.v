@@ -2,7 +2,8 @@ module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
-    parameter WORD_SIZE  = 32
+    parameter WORD_SIZE  = 32,
+    parameter ADVANCED   = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -155,6 +156,11 @@ always @ (posedge Clk) begin
             Busy = 1;
             sdram_block[word_counter] = MemDataIn;
 
+            if (word_counter == 0 && ADVANCED) begin
+                Instruction <= sdram_block[refill_word_offset];
+                Ready <= 1;
+            end
+
             if (word_counter == BLOCK_WORDS - 1) begin
                 $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
@@ -164,9 +170,9 @@ always @ (posedge Clk) begin
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-		if (MemReadAddress < 32'h00010060) begin
+                if (MemReadAddress < 32'h00010060 && !ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
-		end
+                end
                 Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
