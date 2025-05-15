@@ -211,16 +211,16 @@ module ucsbece154b_controller (
  wire lwStall; 
 
  assign lwStall = (ResultSrcE == 1) & ( (Rs1D_i == RdE_i) | (Rs2D_i == RdE_i) ) & (RdE_i != 0);
-reg readyF_delayed;
+reg firedOnce;
 
 always @(posedge clk) begin
-    if (reset)
-        readyF_delayed <= 0;
-    else
-        readyF_delayed <= Ready_F;
+  if (reset)
+    firedOnce <= 0;
+  else
+    firedOnce <= 1;
 end
 
- assign StallF_o = lwStall || ~readyF_delayed || MisspredictE_i;
+ assign StallF_o = lwStall || (~Ready_F && firedOnce | MisspredictE_i);
 
  assign StallD_o = lwStall || ~Ready_F;
  assign FlushD_o = MisspredictE_i;
