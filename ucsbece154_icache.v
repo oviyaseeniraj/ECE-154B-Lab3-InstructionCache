@@ -55,7 +55,6 @@ reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
-reg hit_latched; // NEW: to stretch hit signal
 
 
 // NEW: Latch the read address for stable word_offset usage
