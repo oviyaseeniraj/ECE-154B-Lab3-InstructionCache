@@ -151,7 +151,9 @@ always @ (posedge Clk) begin
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-                Instruction <= sdram_block[refill_word_offset];
+		if (MemReadAddress < 32'h00010060) begin
+                    Instruction <= sdram_block[refill_word_offset];
+		end
                 Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
