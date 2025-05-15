@@ -68,6 +68,7 @@ wire [31:0] PCPlus4F = PCF_o + 32'd4;
 
 wire [31:0] BTBTargetF;
 wire BranchTakenF;
+reg MisspredictM;
 
 assign PCEnable = (ReadyF_i) && ~Busy_i && ~MemDataReady_i;
 
@@ -246,12 +247,14 @@ always @ (posedge clk) begin
         ExtImmM      <= 32'b0;
         PCPlus4M     <= 32'b0;
         RdM_o        <=  5'b0;
+	MisspredictM <=  1'b0;
     end else begin 
         ALUResultM_o <= ALUResultE;
         WriteDataM_o <= WriteDataE;
         ExtImmM      <= ExtImmE;
         PCPlus4M     <= PCPlus4E;
         RdM_o        <= RdE_o;
+	MisspredictM <= MisspredictE_o;
     end 
 end
 
