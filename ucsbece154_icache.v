@@ -139,10 +139,7 @@ always @ (posedge Clk) begin
             need_to_write = 1;
         end
 
-        if (MemDataReady && need_to_write) begin
-            
-            // --- EARLY EXIT ON MISPREDICT ---
-            if (Mispredict && need_to_write) begin
+        if (Mispredict && need_to_write) begin
                 $display("Early cancel: mispredict before MemDataReady @ %0t", $time);
                 Busy <= 0;
                 MemReadRequest <= 0;
@@ -151,31 +148,30 @@ always @ (posedge Clk) begin
                 lastReadAddress <= 0;
                 for (k = 0; k < BLOCK_WORDS; k = k + 1)
                     sdram_block[k] <= 32'b0;
-            end else begin
-                Busy = 1;
-                sdram_block[word_counter] = MemDataIn;
+        end else if (MemDataReady && need_to_write) begin
+            Busy = 1;
+            sdram_block[word_counter] = MemDataIn;
 
-                if (word_counter == BLOCK_WORDS - 1) begin
-                    $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
-                    for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-                        words[refill_set_index][replace_way][k] <= sdram_block[k];
-                        $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
-                    end
-                    tags[refill_set_index][replace_way] <= refill_tag_index;
-                    valid[refill_set_index][replace_way] <= 1;
+            if (word_counter == BLOCK_WORDS - 1) begin
+                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
+                for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                    words[refill_set_index][replace_way][k] <= sdram_block[k];
+                    $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
+                end
+                tags[refill_set_index][replace_way] <= refill_tag_index;
+                valid[refill_set_index][replace_way] <= 1;
 
-                    if (MemReadAddress < 32'h00010060) begin
-                        Instruction <= sdram_block[refill_word_offset];
-                    end
-
-                    Ready <= 1;
-                    Busy <= 0;
-                    MemReadRequest <= 0;
-                    need_to_write <= 0;
+                if (MemReadAddress < 32'h00010060) begin
+                    Instruction <= sdram_block[refill_word_offset];
                 end
 
-                word_counter <= word_counter + 1;
+                Ready <= 1;
+                Busy <= 0;
+                MemReadRequest <= 0;
+                need_to_write <= 0;
             end
+
+            word_counter <= word_counter + 1;
         end
     end
 end
