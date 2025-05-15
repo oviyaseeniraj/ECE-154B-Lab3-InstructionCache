@@ -89,7 +89,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
                     word_counter <= word_counter + 1;
                 end else if (word_counter < BLOCK_WORDS) begin
                     if (offset == critical_offset) begin
-                        offset = offset + 1;
+                        offset <= offset + 1;
                     end
                     DataIn <= text_enable ? text_data : 32'hZZZZZZZZ;
                     DataReady <= 1;

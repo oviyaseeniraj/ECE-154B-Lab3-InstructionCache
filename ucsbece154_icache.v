@@ -3,7 +3,7 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 1
+    parameter ADVANCED   = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -54,6 +54,7 @@ reg hit_this_cycle;
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
 reg [1:0] word_counter;
+reg [1:0] offset;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
@@ -68,6 +69,7 @@ always @ (posedge Clk) begin
         MemReadAddress <= 0;
         MemReadRequest <= 0;
         word_counter <= 0;
+        offset <= 0;
         need_to_write <= 0;
         lastReadAddress <= 0;
         hit_latched <= 0;
@@ -149,16 +151,26 @@ always @ (posedge Clk) begin
             end
 
             word_counter <= 0;
+            offset <= 0;
             need_to_write = 1;
         end
 
         if (MemDataReady && need_to_write) begin
             Busy = 1;
-            sdram_block[word_counter] = MemDataIn;
-
-            if (word_counter == 0 && ADVANCED) begin
-                Instruction <= sdram_block[refill_word_offset];
-                Ready <= 1;
+            
+            if (ADVANCED) begin
+                if (word_counter == 0) begin
+                    sdram_block[refill_word_offset] <= MemDataIn;
+                    Instruction <= sdram_block[refill_word_offset];
+                    Ready <= 1;
+                end else begin
+                    if (offset == refill_word_offset) begin
+                        offset = offset + 1;
+                    end
+                    sdram_block[offset] <= MemDataIn;
+                end
+            end else begin
+                sdram_block[word_counter] <= MemDataIn;
             end
 
             if (word_counter == BLOCK_WORDS - 1) begin
@@ -180,6 +192,7 @@ always @ (posedge Clk) begin
             end
 
             word_counter <= word_counter + 1;
+            offset <= offset + 1;
         end
     end
 end
