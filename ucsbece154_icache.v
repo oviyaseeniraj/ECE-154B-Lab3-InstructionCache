@@ -160,17 +160,17 @@ always @ (posedge Clk) begin
             
             if (ADVANCED) begin
                 if (word_counter == 0) begin
-                    sdram_block[refill_word_offset] <= MemDataIn;
-                    Instruction <= sdram_block[refill_word_offset];
+                    sdram_block[refill_word_offset] = MemDataIn;
+                    Instruction <= MemDataIn;
                     Ready <= 1;
                 end else begin
                     if (offset == refill_word_offset) begin
-                        offset <= offset + 1;
+                        offset = offset + 1;
                     end
                     sdram_block[offset] <= MemDataIn;
                 end
             end else begin
-                sdram_block[word_counter] <= MemDataIn;
+                sdram_block[word_counter] = MemDataIn;
             end
 
             if (word_counter == BLOCK_WORDS - 1) begin
