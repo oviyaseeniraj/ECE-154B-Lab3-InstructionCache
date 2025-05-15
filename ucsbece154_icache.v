@@ -85,14 +85,12 @@ always @ (posedge Clk) begin
             end
         end
     // NEW: Flush kills current cache operation
-    end else if (Flush) begin
-        $display("FLUSH: killing current refill at time %0t", $time);
-        Busy <= 0;
+    end else if (Flush || Mispredict) begin
         MemReadRequest <= 0;
+        Ready <= 0;
+        Busy <= 0;
         need_to_write <= 0;
         word_counter <= 0;
-        Ready <= 0;
-        lastReadAddress <= 32'hFFFFFFFF; // NEW: Clear invalid state
     end else begin
         // Default values
         Ready <= 0;
