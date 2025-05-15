@@ -20,7 +20,8 @@ module ucsbece154_icache #(
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
     input                     PCEnable,
-    input                     Mispredict
+    input                     Mispredict,
+    input                     Flush
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -83,6 +84,14 @@ always @ (posedge Clk) begin
                 end
             end
         end
+    // NEW: Flush kills current cache operation
+    end else if (Flush) begin
+        $display("FLUSH: killing current refill at time %0t", $time);
+        Busy <= 0;
+        MemReadRequest <= 0;
+        need_to_write <= 0;
+        word_counter <= 0;
+        Ready <= 0;
     end else begin
         // Default values
         Ready <= 0;
@@ -157,14 +166,6 @@ always @ (posedge Clk) begin
             end
         end
 
-    end
-end
-
-always @(*) begin
-    if (Mispredict) begin
-        latchedReadAddress = ReadAddress;
-    end else if (PCEnable) begin
-        latchedReadAddress = ReadAddress;
     end
 end
 

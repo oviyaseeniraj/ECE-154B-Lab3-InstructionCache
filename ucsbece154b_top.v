@@ -17,7 +17,7 @@ wire [31:0] SDRAM_DataIn;
 wire SDRAM_ReadRequest;
 wire SDRAM_DataReady;
 wire ReadyF;
-wire PCenable, Mispredict;
+wire PCenable, Mispredict, Flush;
 ucsbece154_icache icache (
     .Clk(clk),
     .Reset(reset),
@@ -31,7 +31,8 @@ ucsbece154_icache icache (
     .MemDataIn(SDRAM_DataIn),
     .MemDataReady(SDRAM_DataReady),
     .PCEnable(PCenable),
-    .Mispredict(Mispredict)
+    .Mispredict(Mispredict),
+    .Flush(Flush)
 );
 
 
@@ -51,6 +52,7 @@ ucsbece154b_riscv_pipe riscv (
     .Busy(busy),
     .PCEnable(PCenable),
     .Mispredict(Mispredict)
+    .Flush(Flush)
 );
 ucsbece154_imem imem (
     .clk(clk),
