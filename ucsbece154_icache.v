@@ -142,16 +142,19 @@ always @ (posedge Clk) begin
 
         if (MemDataReady && need_to_write) begin
             Busy = 1;
-            
+
             if (ADVANCED) begin
                 if (word_counter == 0) begin
-                    sdram_block[refill_word_offset] = MemDataIn;
+                    // Deliver critical word immediately
+                    sdram_block[refill_word_offset] = MemDataIn; // critical word
                     early_restart <= 1;
                 end else begin
+                    // Skip critical word
                     if (offset == refill_word_offset) begin
-                        offset = offset + 1;
+                        offset = offset + 1; // skip it
                     end
                     sdram_block[offset] = MemDataIn;
+                    offset = offset + 1;
                 end
             end else begin
                 sdram_block[word_counter] = MemDataIn;
@@ -174,8 +177,8 @@ always @ (posedge Clk) begin
                 MemReadRequest <= 0;
                 need_to_write <= 0;
             end
+
             word_counter <= word_counter + 1;
-            offset <= offset + 1;
         end
         if (early_restart) begin
             Instruction <= sdram_block[refill_word_offset];
