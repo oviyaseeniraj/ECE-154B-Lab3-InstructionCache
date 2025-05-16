@@ -55,7 +55,7 @@ wire [31:0] reg_t3 = top.riscv.dp.rf.t3;
 wire [31:0] reg_t4 = top.riscv.dp.rf.t4;
 wire [31:0] reg_t5 = top.riscv.dp.rf.t5;
 wire [31:0] reg_t6 = top.riscv.dp.rf.t6;
-
+wire [3]
 wire [31:0] fetchpc = top.riscv.dp.PCPlus4W;
 
 integer i;
@@ -98,9 +98,9 @@ initial begin
     end
 
     // NEW: Show final register state for confirmation
-    $display("Final x5 (loop counter): %d", top.riscv.dp.rf.x5);
-    $display("Final x6 (target): %d", top.riscv.dp.rf.x6);
-    $display("Final x7 (last add result): %d", top.riscv.dp.rf.x7);
+    $display("Final x5 (loop counter): %d", top.riscv.dp.rf.t0);
+    $display("Final x6 (target): %d", top.riscv.dp.rf.t1);
+    $display("Final x7 (last add result): %d", top.riscv.dp.rf.t2);
 
     $display("End simulation.");
     $stop;
