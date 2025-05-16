@@ -4,7 +4,7 @@ module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
     parameter BLOCK_WORDS = 4,
     parameter T0_DELAY = 40,
-    parameter ADVANCED = 1
+    parameter ADVANCED = 0
 ) (
     input wire clk,
     input wire reset,

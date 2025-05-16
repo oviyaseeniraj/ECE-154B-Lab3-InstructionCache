@@ -72,13 +72,12 @@ initial begin
     for (i = 0; i < 10000; i = i + 1) begin
         @(negedge clk);
 
-        // Detect edge of Ready going high for a new fetch
-        if (top.icache.ReadEnable && top.icache.Ready && !prev_ready) begin
+        if (top.icache.Ready) begin
             total_fetches = total_fetches + 1;
-            if (prev_memread == 1)
-                icachemisses = icachemisses + 1;
-            else
+            if (top.icache.hit_this_cycle == 1)
                 icachehits = icachehits + 1;
+            else
+                icachemisses = icachemisses + 1;
         end
 
         prev_ready = top.icache.Ready;

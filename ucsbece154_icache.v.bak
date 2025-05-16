@@ -3,7 +3,7 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 1
+    parameter ADVANCED   = 0
 )(
     input                     Clk,
     input                     Reset,

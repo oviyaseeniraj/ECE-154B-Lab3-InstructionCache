@@ -18,7 +18,7 @@ wire SDRAM_ReadRequest;
 wire SDRAM_DataReady;
 wire ReadyF;
 wire Misprediction;
-wire imem_reset;
+reg imem_reset;
 ucsbece154_icache icache (
     .Clk(clk),
     .Reset(reset),

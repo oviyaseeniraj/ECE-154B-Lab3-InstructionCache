@@ -196,7 +196,7 @@ end
 
 // Forwarding logic
  always @ * begin
-  if (!Ready_E)
+  if (!Ready_F)
 	 ForwardAE_o = 2'b11;
   else if ( (Rs1E_i == RdM_i) & RegWriteM & (Rs1E_i != 0) ) 
          ForwardAE_o = forward_mem;
@@ -206,7 +206,7 @@ end
  end
   
  always @ * begin
-  if (!Ready_E)
+  if (!Ready_F)
 	 ForwardBE_o = 2'b11;
   else if ( (Rs2E_i == RdM_i) & RegWriteM & (Rs2E_i != 0) ) 
          ForwardBE_o = forward_mem;
