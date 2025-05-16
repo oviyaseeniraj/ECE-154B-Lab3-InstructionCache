@@ -50,7 +50,8 @@ module ucsbece154b_datapath (
     input		 Busy_i,
     input  		 MemDataReady_i,
     input		 ReadyF_i,
-    output		 PCEnable
+    output		 PCEnable,
+    input		 PCUpdate
 );
 
 `include "ucsbece154b_defines.vh"
@@ -71,7 +72,7 @@ wire BranchTakenF;
 reg MisspredictM;
 reg [31:0] PCE;
 
-assign PCEnable = MisspredictE_o || (ReadyF_i  && ~Busy_i && ~MemDataReady_i);
+assign PCEnable = MisspredictE_o || (ReadyF_i && ~Busy_i && ~MemDataReady_i);
 
 wire [31:0] PCTargetF =  BranchTakenF ? BTBTargetF : PCPlus4F;
 wire [31:0] PCnewF =  MisspredictE_o ? PCcorrecttargetE : PCTargetF;

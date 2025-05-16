@@ -79,9 +79,9 @@ initial begin
             else
                 icachemisses = icachemisses + 1;
         end
-
-        prev_ready = top.icache.Ready;
-        prev_memread = top.icache.MemReadRequest;
+	if (top.riscv.dp.PCE == 32'h00010060) begin
+	    i = 10001;
+	end
     end
 
     $display("Total fetches: %d", total_fetches);

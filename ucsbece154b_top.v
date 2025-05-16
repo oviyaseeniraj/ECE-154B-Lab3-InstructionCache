@@ -19,6 +19,7 @@ wire SDRAM_DataReady;
 wire ReadyF;
 wire Misprediction;
 wire imem_reset;
+wire PCUpdate;
 ucsbece154_icache icache (
     .Clk(clk),
     .Reset(reset),
@@ -32,7 +33,8 @@ ucsbece154_icache icache (
     .MemDataIn(SDRAM_DataIn),
     .MemDataReady(SDRAM_DataReady),
     .Misprediction(Misprediction),
-    .imem_reset(imem_reset)
+    .imem_reset(imem_reset),
+    .PCUpdate(PCUpdate)
 );
 
 
@@ -50,7 +52,8 @@ ucsbece154b_riscv_pipe riscv (
     .PCNewF(pcf), // NEW: feeds icache ReadAddress
     .MemDataReady(SDRAM_DataReady),
     .Busy(busy),
-    .Misprediction(Misprediction)
+    .Misprediction(Misprediction),
+    .PCUpdate(PCUpdate)
 );
 ucsbece154_imem imem (
     .clk(clk),

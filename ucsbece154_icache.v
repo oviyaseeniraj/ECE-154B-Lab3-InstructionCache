@@ -4,7 +4,7 @@ module ucsbece154_icache #(
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
     parameter ADVANCED   = 1,
-    parameter PREFETCH = 1
+    parameter PREFETCH = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -22,7 +22,8 @@ module ucsbece154_icache #(
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
     input                     Misprediction,
-    output reg		      imem_reset
+    output reg		      imem_reset,
+    output reg		      PCUpdate
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -88,6 +89,7 @@ always @ (posedge Clk) begin
         prefetch_valid <= 0;
         prefetch_in_progress <= 0;
         prefetch_word_counter <= 0;
+	PCUpdate <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -183,7 +185,7 @@ always @ (posedge Clk) begin
                 if (word_counter == 0) begin
                     sdram_block[refill_word_offset] = MemDataIn;
                     Instruction <= MemDataIn;
-                    Ready <= 1;
+                    // Ready <= 1;
                 end else begin
                     if (offset == refill_word_offset) begin
                         offset = offset + 1;
@@ -204,10 +206,11 @@ always @ (posedge Clk) begin
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-                if (MemReadAddress < 32'h00010060 && !ADVANCED) begin
+                if (!ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
                 end
-                Ready <= 1;
+
+		Ready <= 1;
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;

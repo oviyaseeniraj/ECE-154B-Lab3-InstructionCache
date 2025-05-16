@@ -18,7 +18,8 @@ module ucsbece154b_riscv_pipe (
     output wire [31:0] PCNewF, // NEW: feeds icache ReadAddress
     input Busy,
     input MemDataReady,
-    output Misprediction
+    output Misprediction,
+    input PCUpdate
 );
 
 wire  StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE; //, ZeroE, PCSrcE;
@@ -105,6 +106,7 @@ ucsbece154b_datapath dp (
     .PCNewF_o(PCNewF), // NEW: feeds icache ReadAddress
     .Busy_i(Busy),
     .MemDataReady_i(MemDataReady),
-    .ReadyF_i(ReadyF)
+    .ReadyF_i(ReadyF),
+    .PCUpdate(PCUpdate)
 );
 endmodule
