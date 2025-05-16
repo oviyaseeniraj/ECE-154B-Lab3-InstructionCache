@@ -182,6 +182,7 @@ always @ (posedge Clk) begin
             if (ADVANCED) begin
                 if (word_counter == 0) begin
                     sdram_block[refill_word_offset] = MemDataIn;
+                    words[refill_set_index][replace_way][refill_word_offset] = MemDataIn;
                     if (!Ready)
                         Instruction <= MemDataIn;
                     Ready <= 1;
