@@ -1,13 +1,10 @@
-// ucsbece154_icache.v
-// ECE 154B Advanced Cache with Critical Word First and Prefetcher
-
 module ucsbece154_icache #(
     parameter NUM_SETS   = 8,
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
     parameter ADVANCED   = 1,
-    parameter PREFETCH   = 1
+    parameter PREFETCH = 1
 )(
     input                     Clk,
     input                     Reset,
@@ -25,7 +22,7 @@ module ucsbece154_icache #(
     input      [31:0]         MemDataIn,
     input                     MemDataReady,
     input                     Misprediction,
-    output reg                imem_reset
+    output reg		      imem_reset
 );
 
 localparam WORD_OFFSET   = $clog2(4);
@@ -33,14 +30,17 @@ localparam BLOCK_OFFSET  = $clog2(BLOCK_WORDS);
 localparam OFFSET        = WORD_OFFSET + BLOCK_OFFSET;
 localparam NUM_TAG_BITS  = 32 - $clog2(NUM_SETS) - OFFSET;
 
+// Cache structures
 reg [NUM_TAG_BITS-1:0] tags     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg                   valid     [0:NUM_SETS-1][0:NUM_WAYS-1];
 reg [31:0]            words     [0:NUM_SETS-1][0:NUM_WAYS-1][0:BLOCK_WORDS-1];
 
+// Indices
 wire [$clog2(NUM_SETS)-1:0] set_index = ReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     tag_index = ReadAddress[31:OFFSET + $clog2(NUM_SETS)];
 wire [BLOCK_OFFSET-1:0]     word_offset = ReadAddress[OFFSET-1:WORD_OFFSET];
 
+// Refills use this stored address
 reg [31:0] lastReadAddress;
 wire [$clog2(NUM_SETS)-1:0] refill_set_index = lastReadAddress[OFFSET + $clog2(NUM_SETS)-1:OFFSET];
 wire [NUM_TAG_BITS-1:0]     refill_tag_index = lastReadAddress[31:OFFSET + $clog2(NUM_SETS)];
@@ -72,8 +72,6 @@ reg prefetch_word_counter;
 
 wire is_critical_addr = (ReadAddress[31:OFFSET] == lastReadAddress[31:OFFSET]);
 
-reg served_critical; // NEW
-
 always @ (posedge Clk) begin
     if (Reset) begin
         Ready <= 0;
@@ -92,8 +90,6 @@ always @ (posedge Clk) begin
         prefetch_valid <= 0;
         prefetch_in_progress <= 0;
         prefetch_word_counter <= 0;
-        served_critical <= 0; // NEW
-        imem_reset <= 0;
 
         for (i = 0; i < NUM_SETS; i = i + 1) begin
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
@@ -105,10 +101,12 @@ always @ (posedge Clk) begin
             end
         end
     end else begin
+        // Default values
         Ready <= 0;
         imem_reset <= 0;
         hit_this_cycle = 0;
 
+        // --- HIT DETECTION LOGIC ---
         if (Misprediction || (ReadEnable && !Busy && !need_to_write)) begin
             for (i = 0; i < NUM_WAYS; i = i + 1) begin
                 if (valid[set_index][i] && tags[set_index][i] == tag_index) begin
@@ -118,6 +116,7 @@ always @ (posedge Clk) begin
             end
         end
 
+        // CASE 1: HIT IN CACHE
         if (hit_this_cycle) begin
             if (Misprediction) begin
                 MemReadRequest <= 0;
@@ -127,66 +126,89 @@ always @ (posedge Clk) begin
                 Busy <= 0;
             end
             Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
+            $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
             Busy <= 0;
         end else if (PREFETCH && prefetch_valid && prefetch_tag == tag_index && prefetch_index == set_index) begin
+            // CASE 2: PREFETCH HIT
+            // the requested word is supplied from prefetch buffer with no miss penalty
             Instruction <= prefetch_buffer[word_offset];
             Ready <= 1;
             Busy <= 0;
+
+            // next cycle, the block in question from the prefetch buffer is written into cache
             need_to_write <= 1;
             lastReadAddress <= {ReadAddress[31:OFFSET], {(OFFSET){1'b0}}};
+
+            // move from prefetch buffer into sdram buffer for cache writeback
             for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                 sdram_block[k] = prefetch_buffer[k];
             end
             prefetch_valid <= 0;
         end
 
+
+        // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
             if (prefetch_in_progress && prefetch_word_counter == 0) begin
+                // However, a block prefetch could be canceled if it is not yet started.
                 prefetch_in_progress <= 0;
                 MemReadRequest <= 0;
             end
+
             if (Misprediction) begin
                 imem_reset <= 1;
                 Busy <= 0;
             end
+            $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
-            MemReadAddress <= ReadAddress;
+            MemReadAddress <= ReadAddress; // align to block
             MemReadRequest <= 1;
+
+            // Choose replacement or empty way
             replace_way <= 0;
             for (j = 0; j < NUM_WAYS; j = j + 1) begin
                 if (!valid[set_index][j]) begin
                     replace_way <= j;
                 end
             end
+
             word_counter <= 0;
             offset <= 0;
             need_to_write = 1;
-            served_critical <= 0; // NEW
         end
 
         if (MemDataReady && need_to_write) begin
             Busy = 1;
+
             if (ADVANCED) begin
-                if (word_counter == 0 && is_critical_addr && !served_critical) begin
+                if (word_counter == 0 && is_critical_addr && (lastReadAddress != latchedReadAddress)) begin
                     sdram_block[refill_word_offset] = MemDataIn;
                     Instruction <= MemDataIn;
-                    Ready <= 1;
-                    served_critical <= 1; // NEW
+                    if (lastReadAddress != latchedReadAddress) begin
+                        Ready <= 1;
+                        latchedReadAddress <= lastReadAddress; // NEW
+                    end
                 end else begin
+                    if (offset == refill_word_offset) begin
+                        offset = offset + 1;
+                    end
                     sdram_block[offset] = MemDataIn;
-                    offset <= offset + 1;
+		            offset <= offset + 1;
                 end
             end else begin
                 sdram_block[word_counter] = MemDataIn;
             end
 
             if (word_counter == BLOCK_WORDS - 1) begin
+                $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
                     words[refill_set_index][replace_way][k] <= sdram_block[k];
+                    $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
                 end
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
+
                 if (!ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
                 end
@@ -194,8 +216,11 @@ always @ (posedge Clk) begin
                 Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
+
+                // the prefetching of a new block from main memory is initiated to replace the block that was moved to cache
                 if (PREFETCH && !prefetch_in_progress) begin
                     prefetch_address = {lastReadAddress[31:OFFSET], {(OFFSET){1'b0}}} + (BLOCK_WORDS << 2);
+                    //MemReadAddress <= {lastReadAddress[31:OFFSET], {(OFFSET){1'b0}}} + (BLOCK_WORDS << 2);
                     MemReadAddress <= prefetch_address;
                     MemReadRequest <= 1;
                     prefetch_tag <= prefetch_address[31:OFFSET + $clog2(NUM_SETS)];
@@ -205,7 +230,8 @@ always @ (posedge Clk) begin
                 end
             end
             word_counter <= word_counter + 1;
-        end else if (PREFETCH && MemDataReady && prefetch_in_progress) begin
+        end else if (PREFETCH && MemDataReady && prefetch_in_progress) begin 
+        // Block transfer from SDRAM controller to cache controller cannot be interrupted
             prefetch_buffer[prefetch_word_counter] <= MemDataIn;
             prefetch_word_counter <= prefetch_word_counter + 1;
             if (prefetch_word_counter == BLOCK_WORDS-1) begin
@@ -214,6 +240,7 @@ always @ (posedge Clk) begin
                 MemReadRequest <= 0;
             end
         end
+
     end
 end
 
