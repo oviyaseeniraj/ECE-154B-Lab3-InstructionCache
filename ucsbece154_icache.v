@@ -127,10 +127,7 @@ always @ (posedge Clk) begin
             end
             Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
             $display("instr at pc %h is %h", ReadAddress, Instruction);
-            if (ReadAddress != latchedReadAddress) begin
-                Ready <= 1;
-                latchedReadAddress <= ReadAddress; // NEW: latch the served address
-            end
+            Ready <= 1;
             Busy <= 0;
         end else if (PREFETCH && prefetch_valid && prefetch_tag == tag_index && prefetch_index == set_index) begin
             // CASE 2: PREFETCH HIT
