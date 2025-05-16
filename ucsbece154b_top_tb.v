@@ -55,7 +55,6 @@ wire [31:0] reg_t3 = top.riscv.dp.rf.t3;
 wire [31:0] reg_t4 = top.riscv.dp.rf.t4;
 wire [31:0] reg_t5 = top.riscv.dp.rf.t5;
 wire [31:0] reg_t6 = top.riscv.dp.rf.t6;
-wire [3]
 wire [31:0] fetchpc = top.riscv.dp.PCPlus4W;
 
 integer i;
