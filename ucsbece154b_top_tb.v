@@ -1,4 +1,4 @@
-// ucsbece154b_top_tb.v (updated for latched ReadAddress in icache)
+// ucsbece154b_top_tb.v (updated for assembly loop halting condition)
 `define SIM
 
 `define ASSERT(CONDITION, MESSAGE) if ((CONDITION)==1'b1); else begin $error($sformatf MESSAGE); end
@@ -79,9 +79,11 @@ initial begin
             else
                 icachemisses = icachemisses + 1;
         end
-	if (top.riscv.dp.PCE == 32'h00010060) begin
-	    i = 10001;
-	end
+
+        // if (top.riscv.dp.PCE == 32'h00010060) begin // OLD: halt based on PC
+        if (top.riscv.dp.rf.x5 == 32'd50) begin // NEW: halt when x5 == 50 (loop done)
+            i = 10001;
+        end
     end
 
     $display("Total fetches: %d", total_fetches);
@@ -94,6 +96,11 @@ initial begin
     end else begin
         $display("No fetches occurred.");
     end
+
+    // NEW: Show final register state for confirmation
+    $display("Final x5 (loop counter): %d", top.riscv.dp.rf.x5);
+    $display("Final x6 (target): %d", top.riscv.dp.rf.x6);
+    $display("Final x7 (last add result): %d", top.riscv.dp.rf.x7);
 
     $display("End simulation.");
     $stop;
