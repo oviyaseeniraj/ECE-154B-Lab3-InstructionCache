@@ -137,6 +137,11 @@ always @ (posedge Clk) begin
             // next cycle, the block in question from the prefetch buffer is written into cache
             need_to_write <= 1;
             lastReadAddress <= {ReadAddress[31:OFFSET], {(OFFSET){1'b0}}};
+
+            // move from prefetch buffer into sdram buffer for cache writeback
+            for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
+                sdram_block[k] = prefetch_buffer[k];
+            end
             prefetch_valid <= 0;
         end
 
