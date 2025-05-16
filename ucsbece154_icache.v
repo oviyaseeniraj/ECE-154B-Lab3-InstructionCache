@@ -69,7 +69,7 @@ reg prefetch_valid;
 reg [31:0] prefetch_address;
 reg prefetch_in_progress;
 wire is_prefetch_hit = prefetch_valid && (prefetch_tag == tag_index);
-reg prefetch_word_counter;
+reg [1:0] prefetch_word_counter;
 
 always @ (posedge Clk) begin
     if (Reset) begin
