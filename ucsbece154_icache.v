@@ -148,6 +148,12 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
+            if (prefetch_in_progress && prefetch_word_counter == 0) begin
+                // However, a block prefetch could be canceled if it is not yet started.
+                prefetch_in_progress <= 0;
+                MemReadRequest <= 0;
+            end
+
             if (Misprediction) begin
                 imem_reset <= 1;
                 Busy <= 0;
@@ -208,7 +214,7 @@ always @ (posedge Clk) begin
 
                 // the prefetching of a new block from main memory is initiated to replace the block that was moved to cache
                 if (PREFETCH && !prefetch_in_progress) begin
-                    prefetch_address <= {lastReadAddress[31:OFFSET], {(OFFSET){1'b0}}} + (BLOCK_WORDS << 2);
+                    prefetch_address = {lastReadAddress[31:OFFSET], {(OFFSET){1'b0}}} + (BLOCK_WORDS << 2);
                     //MemReadAddress <= {lastReadAddress[31:OFFSET], {(OFFSET){1'b0}}} + (BLOCK_WORDS << 2);
                     MemReadAddress <= prefetch_address;
                     MemReadRequest <= 1;
