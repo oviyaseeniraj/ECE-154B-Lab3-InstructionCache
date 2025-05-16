@@ -3,7 +3,7 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 1,
+    parameter ADVANCED   = 0,
     parameter PREFETCH = 0
 )(
     input                     Clk,
@@ -103,6 +103,7 @@ always @ (posedge Clk) begin
     end else begin
         // Default values
         Ready <= 0;
+	PCUpdate <= 0;
         imem_reset <= 0;
         hit_this_cycle = 0;
 
@@ -185,7 +186,7 @@ always @ (posedge Clk) begin
                 if (word_counter == 0) begin
                     sdram_block[refill_word_offset] = MemDataIn;
                     Instruction <= MemDataIn;
-                    // Ready <= 1;
+                    Ready <= 1;
                 end else begin
                     if (offset == refill_word_offset) begin
                         offset = offset + 1;
@@ -200,18 +201,19 @@ always @ (posedge Clk) begin
             if (word_counter == BLOCK_WORDS - 1) begin
                 $display("writing to cache at time %0t, read_address=%h, refill_set_index=%0b, replace_way=%0b", $time, ReadAddress - 4, refill_set_index, replace_way);
                 for (k = 0; k < BLOCK_WORDS; k = k + 1) begin
-                    words[refill_set_index][replace_way][k] <= sdram_block[k];
+                    words[refill_set_index][replace_way][k] = sdram_block[k];
                     $display("sdram_block[%0d] = %0h", k, sdram_block[k]);
                 end
-                tags[refill_set_index][replace_way] <= refill_tag_index;
-                valid[refill_set_index][replace_way] <= 1;
+                tags[refill_set_index][replace_way] = refill_tag_index;
+                valid[refill_set_index][replace_way] = 1;
 
                 if (!ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
-                end
-
-		Ready <= 1;
-                Busy <= 0;
+		    Ready <= 1;
+		end
+	
+		PCUpdate <= 1;
+		Busy <= 0;
                 MemReadRequest <= 0;
                 need_to_write <= 0;
 
