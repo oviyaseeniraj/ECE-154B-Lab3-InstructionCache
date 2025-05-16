@@ -156,7 +156,6 @@ always @ (posedge Clk) begin
                     end else begin
                         sdram_block[offset] = MemDataIn;
                     end
-                    offset = offset + 1;
                 end
             end else begin
                 sdram_block[word_counter] = MemDataIn;
@@ -179,8 +178,10 @@ always @ (posedge Clk) begin
                 MemReadRequest <= 0;
                 need_to_write <= 0;
             end
-
+            if (word_counter != 0)
+                offset <= offset + 1;
             word_counter <= word_counter + 1;
+            
         end
         if (early_restart) begin
             Instruction <= sdram_block[refill_word_offset];
