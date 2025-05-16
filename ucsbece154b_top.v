@@ -20,6 +20,7 @@ wire ReadyF;
 wire Misprediction;
 wire imem_reset;
 wire PCUpdate;
+wire prefetch;
 ucsbece154_icache icache (
     .Clk(clk),
     .Reset(reset),
@@ -34,7 +35,8 @@ ucsbece154_icache icache (
     .MemDataReady(SDRAM_DataReady),
     .Misprediction(Misprediction),
     .imem_reset(imem_reset),
-    .PCUpdate(PCUpdate)
+    .PCUpdate(PCUpdate),
+    .prefetch(prefetch)
 );
 
 
@@ -63,7 +65,8 @@ ucsbece154_imem imem (
     .ReadAddress(SDRAM_ReadAddress),
     .DataIn(SDRAM_DataIn),
     .DataReady(SDRAM_DataReady),
-    .imem_reset(imem_reset)
+    .imem_reset(imem_reset),
+    .prefetch(prefetch)
 );
 ucsbece154_dmem dmem (
     .clk(clk), .we_i(memwrite),

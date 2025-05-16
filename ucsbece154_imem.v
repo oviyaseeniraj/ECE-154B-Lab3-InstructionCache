@@ -4,7 +4,7 @@ module ucsbece154_imem #(
     parameter TEXT_SIZE = 64,
     parameter BLOCK_WORDS = 4,
     parameter T0_DELAY = 40,
-    parameter ADVANCED = 0
+    parameter ADVANCED = 1
 ) (
     input wire clk,
     input wire reset,
@@ -14,7 +14,8 @@ module ucsbece154_imem #(
 
     output reg [31:0] DataIn,
     output reg DataReady,
-    input imem_reset
+    input imem_reset,
+    input prefetch
 );
 
 // BRAM
@@ -57,7 +58,9 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
         // Start a new burst
         if (ReadRequest && !reading) begin
             base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
-            delay_counter <= T0_DELAY;
+	    if (~prefetch) begin
+                delay_counter <= T0_DELAY;
+	    end
             word_counter <= 0;
             offset <= 0;
             reading <= 1;
@@ -95,7 +98,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
                     word_counter <= word_counter + 1;
                     offset <= offset + 1;
                 end else begin
-                    reading <= 0;
+		    reading <= 0;
                 end
             end
         end

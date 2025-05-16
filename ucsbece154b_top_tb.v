@@ -74,7 +74,7 @@ initial begin
 
         if (top.icache.Ready) begin
             total_fetches = total_fetches + 1;
-            if (top.icache.hit_this_cycle == 1)
+            if (top.icache.hit_this_cycle == 1 || top.icache.is_prefetch_hit == 1)
                 icachehits = icachehits + 1;
             else
                 icachemisses = icachemisses + 1;
