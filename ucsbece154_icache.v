@@ -3,8 +3,8 @@ module ucsbece154_icache #(
     parameter NUM_WAYS   = 4,
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
-    parameter ADVANCED   = 0,
-    parameter PREFETCH = 0
+    parameter ADVANCED   = 1,
+    parameter PREFETCH = 1
 )(
     input                     Clk,
     input                     Reset,
@@ -129,7 +129,7 @@ always @ (posedge Clk) begin
             Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
-            Busy <= 0;
+            Busy <= 0; 
         end else if (PREFETCH && prefetch_valid && prefetch_tag == tag_index && prefetch_index == set_index) begin
             // CASE 2: PREFETCH HIT
             // the requested word is supplied from prefetch buffer with no miss penalty
