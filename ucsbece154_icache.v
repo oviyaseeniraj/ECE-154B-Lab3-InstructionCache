@@ -70,6 +70,8 @@ reg prefetch_in_progress;
 wire is_prefetch_hit = prefetch_valid && (prefetch_tag == tag_index);
 reg prefetch_word_counter;
 
+wire is_critical_addr = (ReadAddress[31:OFFSET] == lastReadAddress[31:OFFSET]);
+
 always @ (posedge Clk) begin
     if (Reset) begin
         Ready <= 0;
@@ -180,7 +182,7 @@ always @ (posedge Clk) begin
             Busy = 1;
 
             if (ADVANCED) begin
-                if (word_counter == 0) begin
+                if (word_counter == 0 && is_critical_addr) begin
                     sdram_block[refill_word_offset] = MemDataIn;
                     Instruction <= MemDataIn;
                     Ready <= 1;
@@ -204,7 +206,7 @@ always @ (posedge Clk) begin
                 tags[refill_set_index][replace_way] <= refill_tag_index;
                 valid[refill_set_index][replace_way] <= 1;
 
-                if (MemReadAddress < 32'h00010060 && !ADVANCED) begin
+                if (!ADVANCED) begin
                     Instruction <= sdram_block[refill_word_offset];
                 end
                 Ready <= 1;
