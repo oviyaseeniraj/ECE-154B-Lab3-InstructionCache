@@ -118,10 +118,10 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-	    if (Misprediction) begin
-		imem_reset <= 1;
-		Busy <= 0;
-	    end
+            if (Misprediction) begin
+                imem_reset <= 1;
+                Busy <= 0;
+            end
             $display("miss at time %0t, read_address=%h", $time, ReadAddress);
             lastReadAddress <= ReadAddress;
             MemReadAddress <= ReadAddress; // align to block
@@ -152,8 +152,10 @@ always @ (posedge Clk) begin
                     // Skip critical word
                     if (offset == refill_word_offset) begin
                         offset = offset + 1; // skip it
+                        sdram_block[offset] = MemDataIn;
+                    end else begin
+                        sdram_block[offset] = MemDataIn;
                     end
-                    sdram_block[offset] = MemDataIn;
                     offset = offset + 1;
                 end
             end else begin
