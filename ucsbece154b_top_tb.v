@@ -80,7 +80,7 @@ initial begin
         end
 
         // if (top.riscv.dp.PCE == 32'h00010060) begin // OLD: halt based on PC
-        if (top.riscv.dp.rf.x5 == 32'd50) begin // NEW: halt when x5 == 50 (loop done)
+        if (top.riscv.dp.rf.t0 == 32'd50) begin // NEW: halt when x5 == 50 (loop done)
             i = 10001;
         end
     end
