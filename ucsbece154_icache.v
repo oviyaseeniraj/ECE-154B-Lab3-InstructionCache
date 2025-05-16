@@ -157,7 +157,7 @@ always @ (posedge Clk) begin
                 MemReadRequest <= 0;
             end
 
-            if (Misprediction) begin
+            if (Misprediction && prefetch_word_counter == 0) begin
                 imem_reset <= 1;
                 Busy <= 0;
             end
