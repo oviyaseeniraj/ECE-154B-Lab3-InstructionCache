@@ -57,7 +57,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
 
         // Start a new burst
         if (ReadRequest && !reading) begin
-            base_addr <= ReadAddress[31:2 + BLOCK_WORDS] << (2 + BLOCK_WORDS); // align to block
+            base_addr <= ReadAddress[31:2 + $clog2(BLOCK_WORDS)] << (2 + $clog2(BLOCK_WORDS)); // align to block
             delay_counter <= T0_DELAY;
             word_counter <= 0;
             offset <= 0;
