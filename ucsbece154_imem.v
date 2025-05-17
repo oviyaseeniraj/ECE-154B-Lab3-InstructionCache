@@ -58,9 +58,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
         // Start a new burst
         if (ReadRequest && !reading) begin
             base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
-	    if (~prefetch) begin
-                delay_counter <= T0_DELAY;
-	    end
+            delay_counter <= T0_DELAY;
             word_counter <= 0;
             offset <= 0;
             reading <= 1;

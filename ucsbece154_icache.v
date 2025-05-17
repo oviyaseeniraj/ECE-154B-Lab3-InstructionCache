@@ -4,7 +4,7 @@ module ucsbece154_icache #(
     parameter BLOCK_WORDS= 4,
     parameter WORD_SIZE  = 32,
     parameter ADVANCED   = 1,
-    parameter PREFETCH = 1
+    parameter PREFETCH = 0
 )(
     input                     Clk,
     input                     Reset,
@@ -130,13 +130,16 @@ always @ (posedge Clk) begin
 
         // CASE 1: HIT IN CACHE
         if (hit_this_cycle) begin
-            if (Misprediction) begin
+            if (Misprediction && ~prefetch_in_progress) begin
                 MemReadRequest <= 0;
                 MemReadAddress <= 0;
                 need_to_write <= 0;
                 imem_reset <= 1;
                 Busy <= 0;
             end
+	    else if (Misprediction) begin
+		need_to_write <= 0;
+	    end
             Instruction = words[set_index][hit_way][ReadAddress[OFFSET-1:WORD_OFFSET]];
             $display("instr at pc %h is %h", ReadAddress, Instruction);
             Ready <= 1;
@@ -186,11 +189,11 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         else if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-            if (prefetch_in_progress && prefetch_word_counter == 0) begin
+            /**if (prefetch_in_progress && prefetch_word_counter == 0) begin
                 // However, a block prefetch could be canceled if it is not yet started.
                 prefetch_in_progress <= 0;
                 MemReadRequest <= 0;
-            end
+            end*/
 
             if (Misprediction) begin
                 imem_reset <= 1;

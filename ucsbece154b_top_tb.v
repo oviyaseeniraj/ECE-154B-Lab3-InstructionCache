@@ -79,7 +79,7 @@ initial begin
             else
                 icachemisses = icachemisses + 1;
         end
-	if (top.riscv.dp.PCE == 32'h00010060) begin
+	if (top.riscv.dp.InstrE == 32'h00000013) begin
 	    i = 10001;
 	end
     end
