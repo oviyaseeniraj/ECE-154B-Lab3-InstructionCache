@@ -151,7 +151,7 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-            if (prefetch_in_progress && prefetch_word_counter == 0 && !MemDataReady && !MemReadRequest) begin
+            if (Reset || Misprediction) begin
                  // However, a block prefetch could be canceled if it is not yet started.
                 prefetch_in_progress <= 0;
             end
