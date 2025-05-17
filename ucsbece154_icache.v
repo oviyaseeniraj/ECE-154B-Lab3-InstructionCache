@@ -56,8 +56,8 @@ reg hit_latched;
 reg hit_this_cycle;
 
 reg [$clog2(NUM_WAYS)-1:0] replace_way;
-reg [1:0] word_counter;
-reg [1:0] offset;
+reg [$clog2(BLOCK_WORDS)-1:0] word_counter;
+reg [$clog2(BLOCK_WORDS)-1:0] offset;
 reg [31:0] sdram_block [BLOCK_WORDS - 1:0];
 reg need_to_write;
 
@@ -70,7 +70,7 @@ reg prefetch_valid;
 reg [31:0] prefetch_address;
 reg prefetch_in_progress;
 reg is_prefetch_hit;
-reg [1:0] prefetch_word_counter;
+reg [$clog2(BLOCK_WORDS)-1:0] prefetch_word_counter;
 
 reg prefetch_write_to_cache;
 reg [$clog2(NUM_WAYS)-1:0] prefetch_replace_way;

@@ -42,7 +42,7 @@ wire [31:0] text_data = TEXT[text_address];
 
 wire [TEXT_ADDRESS_WIDTH-1:0] critical_address = ReadAddress[2 +: TEXT_ADDRESS_WIDTH] - TEXT_START[2 +: TEXT_ADDRESS_WIDTH];
 wire [31:0] critical_data = TEXT[critical_address];
-wire [1:0] critical_offset = ReadAddress[3:2];
+wire [$clog2(BLOCK_WORDS)-1:0] critical_offset = ReadAddress[2 + $clog2(BLOCK_WORDS) - 1:2];
 
 always @(posedge clk or posedge reset or posedge imem_reset) begin
     if (reset || imem_reset) begin
@@ -57,7 +57,7 @@ always @(posedge clk or posedge reset or posedge imem_reset) begin
 
         // Start a new burst
         if (ReadRequest && !reading) begin
-            base_addr <= {ReadAddress[31:4], 4'b0000}; // align to block
+            base_addr <= ReadAddress[31:2 + BLOCK_WORDS] << (2 + BLOCK_WORDS); // align to block
             delay_counter <= T0_DELAY;
             word_counter <= 0;
             offset <= 0;
