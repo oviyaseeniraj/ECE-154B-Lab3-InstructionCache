@@ -119,7 +119,7 @@ always @ (posedge Clk) begin
 
         // CASE 1: HIT IN CACHE
         if (hit_this_cycle) begin
-            if (Misprediction) begin
+            if (Misprediction && ) begin
                 MemReadRequest <= 0;
                 MemReadAddress <= 0;
                 need_to_write <= 0;
@@ -151,11 +151,11 @@ always @ (posedge Clk) begin
 
         // --- ONLY ENTER REFILL ON CONFIRMED MISS ---
         if (!hit_this_cycle && (Misprediction || (ReadEnable && !Busy && !need_to_write))) begin
-            if (prefetch_in_progress && prefetch_word_counter == 0) begin
-                // However, a block prefetch could be canceled if it is not yet started.
+            if (prefetch_in_progress && prefetch_word_counter == 0 && !MemDataReady && !MemReadRequest) begin
+                 // However, a block prefetch could be canceled if it is not yet started.
                 prefetch_in_progress <= 0;
-                MemReadRequest <= 0;
             end
+
 
             if (Misprediction && prefetch_word_counter == 0) begin
                 imem_reset <= 1;
